@@ -1,6 +1,6 @@
 // Service worker: האפליקציה נטענת גם בלי אינטרנט.
 // בכל עדכון של index.html — להעלות את המספר כאן כדי שהטלפון יקבל את הגרסה החדשה.
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE = "calories-" + VERSION;
 const SHELL = ["./", "index.html", "config.js", "shim.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
