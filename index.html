@@ -387,6 +387,11 @@ button:active:not(:disabled){transform:scale(.96)}
 .calcres b{display:block;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .calcres span{font-size:12px;color:var(--muted)}
 .linkbtn{font-size:14px;font-weight:600;color:var(--cal-text);padding:8px 0;margin-bottom:8px}
+/* backup reminder */
+.backup{padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.backup p{margin:0;flex:1 1 150px;font-size:14px;font-weight:600;line-height:1.4}
+.bk-btns{display:flex;gap:8px;flex:none}
+.backup .primary,.backup .ghost{width:auto;height:40px;margin:0;padding:0 14px;font-size:14px;border-radius:12px}
 @media (prefers-reduced-motion:reduce){.swap,.bump,.rings.goal,.item.new{animation:none!important}}
 </style>
 </head>
@@ -441,6 +446,11 @@ button:active:not(:disabled){transform:scale(.96)}
       </svg>
       <div class="ring-center"><b id="ringNum">0</b><span>קק״ל נאכלו</span></div>
     </div>
+  </section>
+
+  <section class="card backup" id="backupBar" hidden role="region" aria-label="תזכורת גיבוי">
+    <p id="backupMsg"></p>
+    <div class="bk-btns"><button class="primary" id="backupNow">גבה עכשיו</button><button class="ghost" id="backupLater">אחר כך</button></div>
   </section>
 
   <section class="card insight" id="insight" hidden aria-label="פירוט היום">
@@ -586,6 +596,7 @@ button:active:not(:disabled){transform:scale(.96)}
   <div class="statusline"><i id="syncDot"></i><span id="syncText"></span></div>
   <div class="statusline"><i id="aiDot"></i><span id="aiStatus"></span></div>
   <div class="statusline"><i id="persistDot"></i><span id="persistText"></span></div>
+  <div class="statusline"><i id="backupDot"></i><span id="backupText"></span></div>
   <button class="ghost" id="exportCsv">ייצוא כל הנתונים ל-CSV</button>
   <button class="ghost" id="importCsv">ייבוא נתונים מ-CSV</button>
   <input type="file" id="importFile" accept=".csv,text/csv" hidden>
@@ -728,6 +739,7 @@ button:active:not(:disabled){transform:scale(.96)}
     date: "",
     days: {},      // date -> entries
     dayT: {},      // date -> {cal, prot} targets in force for that day
+    backup: {last: 0, snooze: 0},   // גיבוי אחרון (ms) ודחיית תזכורת עד (ms) — לכל פרופיל, בתוך ה-meta שלו
     prefs: defPrefs(),
     db: null, userId: null, sample: null, imgLimits: null, downloads: null,
     meal: "breakfast", mode: "quick", editing: null, photo: null, range: 30,
@@ -765,15 +777,18 @@ button:active:not(:disabled){transform:scale(.96)}
     return lastSaveOk;
   }
   function loadLocal(){
-    state.days = {}; state.dayT = {}; state.prefs = defPrefs();
+    state.days = {}; state.dayT = {}; state.prefs = defPrefs(); state.backup = {last: 0, snooze: 0};
     try { const d = JSON.parse(localStorage.getItem(lsKey(LS_DAYS, state.pid)) || "null"); if (d) state.days = d; } catch(e) {}
     try {
       const m = JSON.parse(localStorage.getItem(lsKey(LS_META, state.pid)) || "null");
-      if (m) { if (m.dayT) state.dayT = m.dayT; if (m.prefs) state.prefs = parsePrefs(m.prefs); }
+      if (m) {
+        if (m.dayT) state.dayT = m.dayT; if (m.prefs) state.prefs = parsePrefs(m.prefs);
+        if (m.backup) state.backup = {last: +m.backup.last || 0, snooze: +m.backup.snooze || 0};
+      }
     } catch(e) {}
   }
   function saveLocal(){
-    try { localStorage.setItem(lsKey(LS_DAYS, state.pid), JSON.stringify(state.days)); localStorage.setItem(lsKey(LS_META, state.pid), JSON.stringify({dayT: state.dayT, prefs: state.prefs})); lastSaveOk = true; }
+    try { localStorage.setItem(lsKey(LS_DAYS, state.pid), JSON.stringify(state.days)); localStorage.setItem(lsKey(LS_META, state.pid), JSON.stringify({dayT: state.dayT, prefs: state.prefs, backup: state.backup})); lastSaveOk = true; }
     catch(e) { lastSaveOk = false; }
     return lastSaveOk;
   }
@@ -983,7 +998,7 @@ button:active:not(:disabled){transform:scale(.96)}
     $("aiGo").disabled = !ai;
     $("photoRow").hidden = !ai;
     if (state.imgLimits) $("photoInput").accept = state.imgLimits.mediaTypes.join(",");
-    $("exportCsv").hidden = !state.downloads;
+    $("exportCsv").hidden = !state.downloads && !navigator.share;
   }
 
   /* ---------- helpers ---------- */
@@ -1152,7 +1167,7 @@ button:active:not(:disabled){transform:scale(.96)}
     lastR = {key: rkey, prot: t.prot, cal: t.cal};
     $("macroLine").textContent = `פחמימות ${fmt1(t.carbs)} ג׳ · שומן ${fmt1(t.fat)} ג׳`;
 
-    renderMeals(); renderWeek();
+    renderMeals(); renderWeek(); renderBackup();
   }
 
   function renderInsight(k, t, T){
@@ -1580,7 +1595,7 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
   $("openSettings").onclick = () => {
     $("sCal").value = state.prefs.cal; $("sProt").value = state.prefs.prot; $("setErr").hidden = true;
     $("sDayEnd").value = String(state.prefs.dayEnd || 0); $("sMacros").checked = !!state.prefs.macros;
-    $("setTitle").textContent = "הגדרות של " + activeProfile().name; renderPersist();
+    $("setTitle").textContent = "הגדרות של " + activeProfile().name; renderPersist(); renderBackupStatus();
     show("setSheet");
   };
   $("sDayEnd").onchange = () => {
@@ -1611,19 +1626,56 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
     state.days[k] = []; persistDay(k); hideAll(); render();
     saved("הרשומות נמחקו", "בטל", () => { state.days[k] = prev; persistDay(k); render(); saved("הרשומות שוחזרו"); });
   };
-  $("exportCsv").onclick = async () => {
-    if (!state.downloads) return;
+  /* ---------- backup (export + reminder) ---------- */
+  const DAY_MS = 864e5;
+  function backupNeed(){
+    const b = state.backup, now = Date.now();
+    if (b.snooze && now < b.snooze) return null;
+    const keys = Object.keys(state.days).filter(k => (state.days[k] || []).length);
+    if (!b.last) return keys.length >= 3 ? {never: true} : null;                         // עוד לא גובה, ויש נתונים ב-3 ימים לפחות
+    const days = Math.floor((now - b.last) / DAY_MS); if (days < 7) return null;
+    return keys.some(k => state.days[k].some(e => (+e.ts || 0) > b.last)) ? {days} : null;   // 7+ ימים ויש פריטים חדשים מאז
+  }
+  function renderBackup(){
+    const need = backupNeed(), bar = $("backupBar");
+    bar.hidden = !need; if (!need) return;
+    $("backupMsg").textContent = need.never ? "עוד לא גיבית את הנתונים" : `עברו ${need.days} ימים מהגיבוי האחרון`;
+  }
+  function renderBackupStatus(){
+    const b = state.backup, d = b.last ? Math.floor((Date.now() - b.last) / DAY_MS) : null;
+    $("backupDot").className = d !== null && d < 7 ? "ok" : "";
+    $("backupText").textContent = d === null ? "עוד לא בוצע גיבוי" : d <= 0 ? "גיבוי אחרון: היום" : d === 1 ? "גיבוי אחרון: אתמול" : `גיבוי אחרון: לפני ${d} ימים`;
+  }
+  function markBackup(){ state.backup.last = Date.now(); state.backup.snooze = 0; saveLocal(); renderBackup(); renderBackupStatus(); return true; }
+  $("backupLater").onclick = () => { state.backup.snooze = Date.now() + 3 * DAY_MS; saveLocal(); renderBackup(); };
+  const csvName = () => {
+    const nm = norm(activeProfile().name).replace(/[\\/:*?"<>|\s]+/g, "-").replace(/^-+|-+$/g, "") || "user";
+    return `calories-${nm}-${keyOf(new Date())}.csv`;
+  };
+  // מחזיר true רק אם הייצוא הושלם (ואז lastBackup מתעדכן). ביטול בחלונית השיתוף = false, בלי שגיאה ובלי עדכון.
+  async function exportData(){
     const esc = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const rows = [["תאריך","ארוחה","פריט","כמות","קלוריות","חלבון (ג׳)","פחמימות (ג׳)","שומן (ג׳)","יעד קלוריות","יעד חלבון"]];
     Object.keys(state.days).sort().forEach(k => {
       const T = tOf(k);
       (state.days[k] || []).forEach(e => rows.push([k, mealName(e.meal || "free"), e.name, +e.qty || 1, e.cal, e.prot, +e.carbs || 0, +e.fat || 0, T.cal, T.prot]));
     });
-    if (rows.length === 1) { toast("אין עדיין נתונים לייצוא"); return; }
-    const csv = "\uFEFF" + rows.map(r => r.map(esc).join(",")).join("\r\n");
-    try { await state.downloads.save({filename: `calories-${todayKey()}.csv`, data: new Blob([csv], {type: "text/csv;charset=utf-8"})}); }
-    catch(e) { if (e && e.code !== "cancelled" && e.code !== "declined") toast("הייצוא נכשל. נסה שוב."); }
-  };
+    if (rows.length === 1) { toast("אין עדיין נתונים לייצוא"); return false; }
+    const csv = "\uFEFF" + rows.map(r => r.map(esc).join(",")).join("\r\n"), name = csvName();
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    try {   // טלפון: חלונית השיתוף (שמירה ל-Files, שליחה בוואטסאפ וכו')
+      const file = typeof File === "function" ? new File([blob], name, {type: "text/csv"}) : null;
+      if (file && navigator.canShare && navigator.canShare({files: [file]})) {
+        try { await navigator.share({files: [file], title: name}); return markBackup(); }
+        catch(e) { if (e && e.name === "AbortError") return false; }   // אחרת (למשל NotAllowed) — נופלים להורדה
+      }
+    } catch(e) {}
+    if (!state.downloads) return false;
+    try { await state.downloads.save({filename: name, data: blob}); return markBackup(); }
+    catch(e) { if (e && e.code !== "cancelled" && e.code !== "declined") toast("הייצוא נכשל. נסה שוב."); return false; }
+  }
+  $("exportCsv").onclick = exportData;
+  $("backupNow").onclick = exportData;
 
   /* ---------- trends ---------- */
   $("openTrends").onclick = () => { renderTrends(); show("trendSheet"); };
