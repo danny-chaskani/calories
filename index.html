@@ -585,6 +585,7 @@ button:active:not(:disabled){transform:scale(.96)}
   <button class="ghost themebtn" id="openTheme"><svg class="i" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7h2A5.6 5.6 0 0 0 22 11c0-5-4.5-9-10-9z"/></svg>עיצוב אישי</button>
   <div class="statusline"><i id="syncDot"></i><span id="syncText"></span></div>
   <div class="statusline"><i id="aiDot"></i><span id="aiStatus"></span></div>
+  <div class="statusline"><i id="persistDot"></i><span id="persistText"></span></div>
   <button class="ghost" id="exportCsv">ייצוא כל הנתונים ל-CSV</button>
   <button class="ghost" id="importCsv">ייבוא נתונים מ-CSV</button>
   <input type="file" id="importFile" accept=".csv,text/csv" hidden>
@@ -776,6 +777,26 @@ button:active:not(:disabled){transform:scale(.96)}
     catch(e) { lastSaveOk = false; }
     return lastSaveOk;
   }
+  /* ---------- persistent storage ---------- */
+  // מבקש מהדפדפן לא למחוק את הנתונים כשחסר מקום. ב-iOS זה מצליח בעיקר כשהאפליקציה מותקנת במסך הבית,
+  // לכן מנסים שוב (פעם אחת בלבד) אחרי השמירה הראשונה של פריט. הכול ב-try/catch — דפדפנים בלי storage.persist פשוט נשארים "לא מאושר".
+  let persisted = false, persistRetried = false;
+  async function tryPersist(){
+    try {
+      const s = navigator.storage;
+      if (s && typeof s.persisted === "function") {
+        persisted = !!(await s.persisted());
+        if (!persisted && typeof s.persist === "function") persisted = !!(await s.persist());
+      }
+    } catch(e) {}
+    renderPersist();
+  }
+  function retryPersist(){ if (!persisted && !persistRetried) { persistRetried = true; tryPersist(); } }
+  function renderPersist(){
+    const dot = $("persistDot"), txt = $("persistText"); if (!dot || !txt) return;
+    dot.className = persisted ? "ok" : "";
+    txt.textContent = persisted ? "אחסון קבוע: מאושר ✓" : "אחסון קבוע: לא מאושר — מומלץ לגבות";
+  }
   const chains = {};
   function queue(id, fn){
     chains[id] = (chains[id] || Promise.resolve()).then(fn).catch(() => toast("השמירה בענן נכשלה — הנתונים נשמרו במכשיר"));
@@ -785,6 +806,7 @@ button:active:not(:disabled){transform:scale(.96)}
   function ref(id){ return state.db.collection(colFor(state.pid)).doc(id); }
   function persistDay(k){
     const ok = saveLocal();
+    if (ok && (state.days[k] || []).length) retryPersist();
     if (!state.db || !state.userId) return ok;
     const entries = (state.days[k] || []).map(e => ({...e}));
     const targets = {...tOf(k)};
@@ -1558,7 +1580,7 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
   $("openSettings").onclick = () => {
     $("sCal").value = state.prefs.cal; $("sProt").value = state.prefs.prot; $("setErr").hidden = true;
     $("sDayEnd").value = String(state.prefs.dayEnd || 0); $("sMacros").checked = !!state.prefs.macros;
-    $("setTitle").textContent = "הגדרות של " + activeProfile().name;
+    $("setTitle").textContent = "הגדרות של " + activeProfile().name; renderPersist();
     show("setSheet");
   };
   $("sDayEnd").onchange = () => {
@@ -2015,7 +2037,7 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
     }
   });
 
-  loadProfilesLocal(); loadLocal(); applyTheme(); state.date = lastToday = todayKey(); renderChip(); setStatus(); render(); initCloud();
+  loadProfilesLocal(); loadLocal(); applyTheme(); state.date = lastToday = todayKey(); renderChip(); setStatus(); render(); initCloud(); tryPersist();
 })();
 </script>
 <script>
