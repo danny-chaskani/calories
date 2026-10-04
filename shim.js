@@ -10,18 +10,24 @@
   const cfg = window.APP_CONFIG || {};
   const MAX_SIDE = 1280;          // מקטינים תמונות לפני שליחה — חוסך עלות וזמן
   const MAX_BYTES = 8 * 1024 * 1024;
+  const MAX_B64 = 6900000;        // ה-Worker דוחה base64 מעל 7,000,000 תווים (image_too_large) — נשארים מתחת עם מרווח
 
   function err(code, message) { const e = new Error(message || code); e.code = code; return e; }
 
-  async function fileToJpegBase64(file) {
+  async function fileToJpegBase64(file, maxSide) {
     const url = URL.createObjectURL(file);
     try {
       const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(err("image_rejected")); i.src = url; });
-      const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+      let scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight)), q = 0.85;
+      for (let i = 0; i < 12; i++) {
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale)); c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const b64 = c.toDataURL("image/jpeg", q).split(",")[1];
+        if (b64.length <= MAX_B64) return b64;
+        if (q > 0.5) q = Math.max(0.5, q - 0.1); else scale *= 0.8;   // קודם מורידים איכות, אחר כך רזולוציה
+      }
+      throw err("image_rejected");
     } finally { URL.revokeObjectURL(url); }
   }
 
@@ -43,7 +49,9 @@
       if (opts.images) {
         const f = Array.isArray(opts.images) ? opts.images[0] : opts.images;
         if (f.size > MAX_BYTES) throw err("image_rejected");
-        body.image = { media_type: "image/jpeg", data: await fileToJpegBase64(f) };
+        // opts.maxSide: רזולוציה מקסימלית (ברירת מחדל 1280; תפריט = 2048). שדות לא מוכרים ב-opts פשוט מתעלמים מהם.
+        const side = Number.isFinite(+opts.maxSide) && +opts.maxSide > 0 ? Math.min(4096, Math.max(256, +opts.maxSide)) : MAX_SIDE;
+        body.image = { media_type: "image/jpeg", data: await fileToJpegBase64(f, side) };
       }
       let r;
       try {

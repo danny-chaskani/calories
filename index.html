@@ -387,6 +387,26 @@ button:active:not(:disabled){transform:scale(.96)}
 .calcres b{display:block;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .calcres span{font-size:12px;color:var(--muted)}
 .linkbtn{font-size:14px;font-weight:600;color:var(--cal-text);padding:8px 0;margin-bottom:8px}
+/* menu scan */
+:root{--fit-great:#166534;--fit-ok:#92400e;--fit-over:#b91c1c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--fit-great:#4ade80;--fit-ok:#fbbf24;--fit-over:#f87171}}
+:root[data-theme="dark"]{--fit-great:#4ade80;--fit-ok:#fbbf24;--fit-over:#f87171}
+.photo-row .photo-btn{min-width:0;padding:0 8px;white-space:nowrap}
+.photo-row .photo-btn:disabled{opacity:.5}
+#thumb{margin-bottom:12px}
+.spin.dk{border-color:var(--line);border-top-color:var(--cal);flex:none}
+#menuBusy{display:flex;align-items:center;gap:10px}
+.note.tip{color:var(--ink);font-weight:600}
+.dish{border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}
+.dish .dn{font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.dish .dm{display:flex;gap:6px;flex-wrap:wrap}
+.dish .dnote{grid-column:1/-1;margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.fit{font-size:12px;font-weight:700;border-radius:99px;padding:3px 10px;white-space:nowrap;justify-self:end}
+.fit.great{color:var(--fit-great);background:color-mix(in srgb,var(--fit-great) 14%,transparent)}
+.fit.ok{color:var(--fit-ok);background:color-mix(in srgb,var(--fit-ok) 14%,transparent)}
+.fit.over{color:var(--fit-over);background:color-mix(in srgb,var(--fit-over) 14%,transparent)}
+.dadd{height:38px;padding:0 18px;border-radius:12px;background:var(--cal);color:var(--on-accent);font-weight:700;font-size:14px}
+.dadd:disabled{opacity:.6}
 /* backup reminder */
 .backup{padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .backup p{margin:0;flex:1 1 150px;font-size:14px;font-weight:600;line-height:1.4}
@@ -505,12 +525,21 @@ button:active:not(:disabled){transform:scale(.96)}
   <div id="aiPane" hidden>
     <p class="note err" id="aiUnavailable" hidden>הערכה אוטומטית לא זמינה בתצוגה הזו. אפשר להזין ידנית.</p>
     <div class="photo-row" id="photoRow" hidden>
-      <button class="photo-btn" id="photoBtn"><svg class="i"><use href="#i-cam"/></svg>צלם או בחר תמונה</button>
-      <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="התמונה שנבחרה"><button id="thumbX" aria-label="הסר תמונה"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <button class="photo-btn" id="photoBtn">📷 צלם צלחת</button>
+      <button class="photo-btn" id="menuBtn">📋 צלם תפריט</button>
       <input type="file" id="photoInput" accept="image/*" hidden>
+      <input type="file" id="menuInput" accept="image/*" hidden>
+    </div>
+    <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="התמונה שנבחרה"><button id="thumbX" aria-label="הסר תמונה"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="note" id="menuBusy" role="status" hidden><span class="spin dk"></span>קורא את התפריט…</p>
+    <p class="note err" id="menuErr" hidden></p>
+    <div id="menuRes" hidden>
+      <p class="note tip" id="menuTip" hidden></p>
+      <div id="menuList"></div>
+      <p class="note">ההערכות למנות מסעדה גסות יותר — אפשר לערוך אחרי ההוספה</p>
     </div>
     <label class="f">תיאור
-      <textarea id="aiText" placeholder="תאר מה אכלת, או הוסף כמה מילים לתמונה. למשל: פיתה עם שקשוקה ו-2 כפות טחינה"></textarea>
+      <textarea id="aiText" placeholder="תאר מה אכלת — או לחץ 🎤 במקלדת והכתב"></textarea>
     </label>
     <p class="note err" id="aiErr" hidden></p>
     <button class="primary" id="aiGo"><span id="aiGoLabel">הערך קלוריות וחלבון</span></button>
@@ -997,7 +1026,7 @@ button:active:not(:disabled){transform:scale(.96)}
     $("aiUnavailable").hidden = ai;
     $("aiGo").disabled = !ai;
     $("photoRow").hidden = !ai;
-    if (state.imgLimits) $("photoInput").accept = state.imgLimits.mediaTypes.join(",");
+    if (state.imgLimits) $("photoInput").accept = $("menuInput").accept = state.imgLimits.mediaTypes.join(",");
     $("exportCsv").hidden = !state.downloads && !navigator.share;
   }
 
@@ -1392,7 +1421,7 @@ button:active:not(:disabled){transform:scale(.96)}
     $("fName").value = ""; $("fCal").value = ""; $("fProt").value = ""; $("fCarb").value = ""; $("fFat").value = ""; $("fFav").checked = false; setQty(1);
     $("macroFields").hidden = !state.prefs.macros;
     $("aiText").value = ""; $("aiErr").hidden = true; $("manErr").hidden = true;
-    $("review").hidden = true; $("rrows").innerHTML = ""; clearPhoto();
+    $("review").hidden = true; $("rrows").innerHTML = ""; clearPhoto(); resetMenu();
   }
   function openAdd(meal){
     state.editing = null; state.meal = meal; resetForm(); renderChips();
@@ -1470,7 +1499,7 @@ button:active:not(:disabled){transform:scale(.96)}
   /* ---------- AI estimate ---------- */
   $("aiGo").onclick = async () => {
     const text = $("aiText").value.trim();
-    $("aiErr").hidden = true;
+    $("aiErr").hidden = true; resetMenu();
     if (!text && !state.photo) { showErr("aiErr", "כתוב מה אכלת או צרף תמונה של הצלחת."); return; }
     if (!state.sample) { showErr("aiErr", "הערכה אוטומטית לא זמינה כאן. עבור להזנה ידנית."); return; }
     const btn = $("aiGo"); btn.disabled = true;
@@ -1494,12 +1523,7 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
       if (!items.length) showErr("aiErr", "לא זיהיתי מאכל. נסה לפרט יותר, או הזן ידנית.");
       else showReview(items);
     } catch(e) {
-      const c = e && e.code;
-      const msg = c === "not_granted" ? "ההערכה החכמה לא מוגדרת. אפשר להזין ידנית."
-        : c === "rate_limited" ? "יותר מדי בקשות ברצף. נסה שוב בעוד דקה."
-        : c === "image_rejected" ? "לא הצלחתי לקרוא את התמונה. נסה תמונה אחרת (JPG או PNG)."
-        : c === "images_unavailable" ? "ניתוח תמונות לא זמין כאן. תאר את הארוחה במילים."
-        : c === "cancelled" ? "" : "ההערכה נכשלה. נסה שוב או הזן ידנית.";
+      const msg = aiErrMsg(e);
       if (msg) showErr("aiErr", msg);
     } finally {
       btn.disabled = !state.sample; $("aiGoLabel").textContent = "הערך קלוריות וחלבון";
@@ -1541,6 +1565,98 @@ Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
     saved(its.length > 1 ? `${its.length} פריטים נוספו ל${mealName(state.meal)}` : "נוסף ליומן");
   };
   function showErr(id, msg){ const el = $(id); el.textContent = msg; el.hidden = false; }
+
+  /* ---------- menu scan ("צלם תפריט") ---------- */
+  // מצלמים תפריט מסעדה → המודל בוחר עד 6 מנות לפי מה שנשאר היום (קלוריות/חלבון), עם תג התאמה. "הוסף" רושם מנה ליומן.
+  const FIT_LABEL = {great: "מתאים מאוד", ok: "אפשרי", over: "חורג"}, FIT_ORDER = {great: 0, ok: 1, over: 2};
+  let menuCtl = null;
+  function setMenuBusy(on){
+    $("menuBusy").hidden = !on; $("menuBtn").disabled = on; $("photoBtn").disabled = on;
+    $("aiGo").disabled = on || !state.sample;
+  }
+  function resetMenu(){
+    if (menuCtl) { try { menuCtl.abort(); } catch(e) {} menuCtl = null; }
+    $("menuRes").hidden = true; $("menuList").innerHTML = ""; $("menuTip").hidden = true; $("menuErr").hidden = true;
+    setMenuBusy(false);
+  }
+  function menuPrompt(){
+    const k = state.date, t = totals(k), T = tOf(k), now = new Date();
+    const calLeft = Math.round(T.cal - t.cal), protLeft = Math.round(T.prot - t.prot);
+    const hhmm = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    const macros = state.prefs.macros ? `\n- Carbs eaten so far: ${Math.round(t.carbs)} g; fat eaten so far: ${Math.round(t.fat)} g` : "";
+    return `You are a nutrition assistant for an Israeli user who is choosing what to order from a restaurant menu.
+The attached image is a photo of a menu (Hebrew and/or English). Read the dishes you can see.
+The user's day so far (current local time ${hhmm}):
+- Calories eaten: ${Math.round(t.cal)} of a ${Math.round(T.cal)} kcal daily limit (${calLeft >= 0 ? calLeft + " kcal left" : "over the limit by " + (-calLeft) + " kcal"})
+- Protein eaten: ${Math.round(t.prot)} g of a ${Math.round(T.prot)} g daily minimum (${protLeft > 0 ? protLeft + " g still needed" : "minimum already reached"})${macros}
+Choose up to 6 dishes from the menu that best fit what is left today, sorted from the best fit to the worst. Assume restaurant portions (usually bigger than home cooking, with more oil and sauces).
+"fit": "great" = fits well within the remaining calories and helps reach the protein minimum; "ok" = acceptable; "over" = would push the user over the calorie limit or is clearly a poor fit.
+Return ONLY a JSON object, no prose, no markdown:
+{"dishes":[{"name":"<dish name in Hebrew as written on the menu>","calories":<integer kcal>,"protein":<grams, max 1 decimal>,"fit":"great|ok|over","note":"<short Hebrew note, max 40 chars>"}],"tip":"<one short Hebrew sentence of advice>"}
+If the image is not a menu or no dishes are readable, return {"dishes":[],"tip":""}.`;
+  }
+  function aiErrMsg(e){
+    const c = e && e.code;
+    return c === "not_granted" ? "ההערכה החכמה לא מוגדרת. אפשר להזין ידנית."
+      : c === "rate_limited" ? "יותר מדי בקשות ברצף. נסה שוב בעוד דקה."
+      : c === "image_rejected" ? "לא הצלחתי לקרוא את התמונה. נסה תמונה אחרת (JPG או PNG)."
+      : c === "images_unavailable" ? "ניתוח תמונות לא זמין כאן. תאר את הארוחה במילים."
+      : c === "cancelled" ? "" : "ההערכה נכשלה. נסה שוב או הזן ידנית.";
+  }
+  async function runMenu(file){
+    resetMenu(); $("aiErr").hidden = true; $("review").hidden = true;
+    if (!state.sample) { showErr("menuErr", "הערכה אוטומטית לא זמינה כאן. עבור להזנה ידנית."); return; }
+    setMenuBusy(true);
+    const ctl = menuCtl = new AbortController();
+    try {
+      const res = await state.sample.json(menuPrompt(), {modelTier: "default", images: file, maxSide: 2048, signal: ctl.signal});
+      if (ctl !== menuCtl) return;   // החלון נסגר או התחילה בקשה חדשה
+      const dishes = (res && Array.isArray(res.dishes) ? res.dishes : [])
+        .map(x => ({name: norm(x && x.name).slice(0, 60), cal: Math.round(Number(x && x.calories)), prot: r1(Number(x && x.protein)),
+          fit: x && FIT_ORDER[x.fit] !== undefined ? x.fit : "ok", note: norm(x && x.note).slice(0, 40)}))
+        .filter(x => x.name && isFinite(x.cal) && isFinite(x.prot) && x.cal >= 0 && x.prot >= 0)
+        .slice(0, 6).sort((a, b) => FIT_ORDER[a.fit] - FIT_ORDER[b.fit]);     // מיון יציב: התאמה, ובתוכה סדר המודל
+      if (!dishes.length) showErr("menuErr", "לא זיהיתי תפריט בתמונה.");
+      else showMenu(dishes, norm(res.tip).slice(0, 160));
+    } catch(e) {
+      if (ctl !== menuCtl) return;
+      const msg = aiErrMsg(e); if (msg) showErr("menuErr", msg);
+    } finally { if (ctl === menuCtl) setMenuBusy(false); }
+  }
+  function showMenu(dishes, tip){
+    $("menuTip").textContent = tip; $("menuTip").hidden = !tip;
+    const box = $("menuList"); box.innerHTML = "";
+    dishes.forEach(d => {
+      const card = document.createElement("div"); card.className = "dish";
+      const nm = document.createElement("span"); nm.className = "dn"; nm.textContent = d.name;
+      const fit = document.createElement("span"); fit.className = "fit " + d.fit; fit.textContent = FIT_LABEL[d.fit];
+      const pills = document.createElement("div"); pills.className = "dm";
+      const pc = document.createElement("span"); pc.className = "pill c"; pc.textContent = fmt(d.cal) + " קק״ל";
+      const pp = document.createElement("span"); pp.className = "pill p"; pp.textContent = fmt1(d.prot) + " ג׳";
+      pills.append(pc, pp);
+      const add = document.createElement("button"); add.className = "dadd"; add.textContent = "הוסף"; add.setAttribute("aria-label", "הוסף " + d.name);
+      add.onclick = () => {
+        addEntry(state.meal, {name: d.name, cal: d.cal, prot: d.prot, carbs: 0, fat: 0, qty: 1}); persistDay(state.date); render();
+        const k = state.date, added = state.days[k][state.days[k].length - 1];
+        add.disabled = true; add.textContent = "נוסף ✓";
+        saved("נוסף ל" + mealName(state.meal) + ": " + d.name, "בטל", () => {
+          state.days[k] = (state.days[k] || []).filter(e => e.id !== added.id); persistDay(k); render();
+          add.disabled = false; add.textContent = "הוסף";
+        });
+      };
+      card.append(nm, fit, pills, add);
+      if (d.note) { const n = document.createElement("p"); n.className = "dnote"; n.textContent = d.note; card.append(n); }
+      box.append(card);
+    });
+    $("menuRes").hidden = false; $("menuRes").scrollIntoView({behavior: "smooth", block: "nearest"});
+  }
+  $("menuBtn").onclick = () => $("menuInput").click();
+  $("menuInput").onchange = () => {
+    const f = $("menuInput").files && $("menuInput").files[0]; $("menuInput").value = "";
+    if (!f) return;
+    if (state.imgLimits && f.size > state.imgLimits.maxInputBytes) { resetMenu(); showErr("menuErr", "התמונה גדולה מדי. נסה תמונה אחרת."); return; }
+    runMenu(f);   // שליחה מיידית
+  };
 
   /* ---------- manual save / delete ---------- */
   let qty = 1;
