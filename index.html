@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>מעקב קלוריות וחלבון</title>
+<meta name="theme-color" content="#f8fafc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="קלוריות">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="config.js"></script>
+<script src="shim.js"></script>
+<style>
+:root{
+  --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --soft:#f1f5f9;
+  --cal:#0d9488; --over:#dc2626; --over-soft:#fee2e2; --warn:#d97706;
+  --prot:#4f46e5; --good:#16a34a; --good-soft:#dcfce7;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -12px rgba(15,23,42,.12);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1220; --card:#131c2e; --ink:#e2e8f0; --muted:#94a3b8; --line:#1f2a40; --soft:#1a2438;
+    --cal:#2dd4bf; --over:#f87171; --over-soft:#450a0a;
+    --prot:#818cf8; --good:#4ade80; --good-soft:#052e16;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1220; --card:#131c2e; --ink:#e2e8f0; --muted:#94a3b8; --line:#1f2a40; --soft:#1a2438;
+  --cal:#2dd4bf; --over:#f87171; --over-soft:#450a0a;
+  --prot:#818cf8; --good:#4ade80; --good-soft:#052e16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink)}
+:focus-visible{outline:2px solid var(--prot);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 140px}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding:8px 0 10px;margin:0 -16px;padding-inline:16px}
+.titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.titlebar h1{font-size:24px;font-weight:800;margin:0;letter-spacing:-.01em}
+.iconbtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line)}
+.datenav{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px}
+.datenav button{height:38px;border-radius:10px;padding:0 10px;display:flex;align-items:center;gap:4px;font-size:14px;color:var(--muted)}
+.datenav button:disabled{opacity:.35}
+.datenav .label{flex:1;text-align:center;font-weight:700;font-size:15px}
+.datenav .label small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.datenav .today{background:var(--soft);color:var(--ink);font-weight:600}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:18px 18px 16px;box-shadow:var(--shadow);margin-top:6px}
+.stat .lead{font-size:13px;color:var(--muted);margin:0}
+.stat .big{display:flex;align-items:baseline;gap:6px;font-size:36px;font-weight:900;line-height:1;margin:4px 0 0;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat .unit{font-size:14px;font-weight:600;letter-spacing:0;color:var(--muted)}
+.stat+.stat{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.stat.cal .big{color:var(--cal)}
+.stat.prot .big{color:var(--prot)}
+.stat.over .big{color:var(--over)}
+.stat.done .big{color:var(--good)}
+.rings{width:132px;height:132px;position:relative}
+.rings svg{width:100%;height:100%;transform:rotate(-90deg)}
+.rings circle{fill:none;stroke-width:12;stroke-linecap:round}
+.rings .track{stroke:var(--soft)}
+.rings .prog{transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1),stroke .3s}
+.ring-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1.1}
+.ring-center b{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
+.ring-center span{font-size:11px;color:var(--muted)}
+@media (max-width:350px){.hero{grid-template-columns:1fr}.rings{margin:0 auto;order:-1}}
+.bar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:10px}
+.bar>span{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(.2,.8,.2,1),background .3s}
+.ratio{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.ratio b{color:var(--ink);font-weight:700}
+
+/* week */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);margin-top:14px}
+.week summary{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;font-weight:700}
+.week summary::-webkit-details-marker{display:none}
+.week summary .rate{font-weight:700;font-size:13px;color:var(--good);background:var(--good-soft);border-radius:99px;padding:3px 10px;white-space:nowrap}
+.week .chev{transition:transform .2s}
+.week[open] .chev{transform:rotate(180deg)}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:0 12px 14px}
+.day{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0;border-radius:12px;font-size:12px;color:var(--muted)}
+.day.sel{background:var(--soft);color:var(--ink);font-weight:700}
+.day .cols{display:flex;gap:3px;align-items:flex-end;height:44px}
+.day .cols i{width:7px;border-radius:4px;background:var(--line);display:block}
+.day .dots{display:flex;gap:3px}
+.day .dots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}
+.legend{display:flex;gap:14px;padding:0 16px 14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* meals */
+#meals{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.meal{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:4px 0}
+.mealhead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px}
+.mealhead h2{font-size:16px;margin:0;font-weight:700;display:flex;align-items:center;gap:10px}
+.mealhead h2 .t{display:flex;flex-direction:column;line-height:1.25}
+.mico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.mealhead .sum{font-size:12px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.items .item{border-top:1px solid var(--line);border-radius:0}
+.items li:first-child .item{border-top:0}
+.addmeal{color:var(--cal);display:flex;align-items:center;gap:4px;font-size:14px;font-weight:600;color:var(--cal);padding:6px 8px;border-radius:10px}
+.items{list-style:none;margin:0;padding:0 8px 8px}
+.item{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:12px}
+.item:active{background:var(--soft)}
+.item .nm{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:start}
+.pill{font-size:12px;font-weight:600;border-radius:99px;padding:3px 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill.c{background:var(--cal-soft);color:var(--cal)}
+.pill.p{background:var(--prot-soft);color:var(--prot)}
+.empty{padding:0 62px 14px 16px;font-size:13px;color:var(--muted)}
+
+.wrapup{margin-top:18px;width:100%;height:54px;border-radius:16px;background:var(--ink);color:var(--bg);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* fab */
+.fab{color:var(--on-accent)!important;position:fixed;inset-inline-start:50%;transform:translateX(50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;height:54px;padding:0 22px;border-radius:99px;background:var(--cal);color:#fff;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;box-shadow:0 10px 24px -8px color-mix(in srgb,var(--cal) 60%,transparent)}
+[dir="rtl"] .fab{color:var(--on-accent)!important;transform:translateX(50%)}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--card);border-radius:22px 22px 0 0;max-height:92%;overflow:auto;transform:translateY(105%);visibility:hidden;transition:transform .28s cubic-bezier(.2,.8,.2,1),visibility 0s .28s;padding:10px 18px calc(20px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto}
+.sheet.on{transform:none;visibility:visible;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 14px;font-size:19px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;margin-bottom:14px}
+.seg button{flex:1;height:38px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chips button{height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--line);font-size:14px;color:var(--muted)}
+.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+label.f{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}
+label.f input,label.f textarea{display:block;width:100%;margin-top:5px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px;outline:none}
+label.f input:focus,label.f textarea:focus{border-color:var(--cal)}
+textarea{resize:none;min-height:84px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.primary{width:100%;height:50px;border-radius:14px;background:var(--cal);color:var(--on-accent);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px}
+.primary:disabled{opacity:.5}
+.ghost{width:100%;height:46px;border-radius:14px;border:1px solid var(--line);font-weight:600;margin-top:8px}
+.danger{color:var(--over)}
+.note{font-size:13px;color:var(--muted);background:var(--soft);border-radius:12px;padding:10px 12px;margin:0 0 12px;line-height:1.5}
+.note.err{background:var(--over-soft);color:var(--over)}
+.est{border:1px dashed var(--cal);border-radius:14px;padding:12px;margin-bottom:12px}
+.est p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.result{text-align:center;padding:6px 0 4px}
+.result .emoji{font-size:52px;line-height:1}
+.result h4{font-size:22px;margin:10px 0 6px;font-weight:800}
+.result p{color:var(--muted);margin:0 0 16px;line-height:1.55}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stats div{background:var(--soft);border-radius:14px;padding:12px}
+.stats b{display:block;font-size:26px;font-weight:900}
+.stats span{font-size:12px;color:var(--muted)}
+.statusline{display:flex;align-items:center;gap:8px;font-size:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.statusline i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.statusline i.ok{background:var(--good)}
+.toast{position:fixed;left:50%;transform:translate(-50%,20px);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:80;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.hdr-actions{display:flex;gap:8px}
+.seg button{font-size:13px}
+.qlist{list-style:none;margin:0 0 14px;padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.qlist li{display:flex;align-items:center;border-top:1px solid var(--line)}
+.qlist li:first-child{border-top:0}
+.qlist .qadd{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:12px;text-align:start}
+.qlist .qadd .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qlist .qadd:active{background:var(--soft)}
+.star{width:44px;height:44px;display:grid;place-items:center;color:var(--muted)}
+.star.on{color:#d97706}
+.star.on svg{fill:#d97706}
+.qh{font-size:13px;font-weight:700;color:var(--muted);margin:4px 2px 8px}
+.photo-row{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.photo-btn{flex:1;height:46px;border-radius:12px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;color:var(--muted);background:var(--bg)}
+.thumb{position:relative;width:64px;height:64px;border-radius:12px;overflow:hidden;flex:none;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:rgba(15,23,42,.7);color:#fff;display:grid;place-items:center}
+.thumb button svg{width:14px;height:14px}
+.review{border:1px dashed var(--cal);border-radius:16px;padding:12px;margin:14px 0 12px}
+.review p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.rrow{display:grid;grid-template-columns:1fr 72px 64px 32px;gap:6px;align-items:center;margin-bottom:8px}
+.rrow input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 8px;outline:none;min-width:0}
+.rrow input:focus{border-color:var(--cal)}
+.rrow .x{width:32px;height:38px;display:grid;place-items:center;color:var(--muted)}
+.rhead{display:grid;grid-template-columns:1fr 72px 64px 32px;gap:6px;font-size:11px;color:var(--muted);margin-bottom:4px;padding:0 2px}
+.rtotal{display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 2px 0;border-top:1px solid var(--line);margin-top:4px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;margin:-2px 0 14px;color:var(--ink)}
+.check input{width:20px;height:20px;accent-color:var(--cal)}
+.tstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tstats div{background:var(--soft);border-radius:14px;padding:12px}
+.tstats b{display:block;font-size:24px;font-weight:900;font-variant-numeric:tabular-nums}
+.tstats span{font-size:12px;color:var(--muted)}
+.chart{margin-bottom:16px}
+.chart h5{margin:0 0 6px;font-size:14px;font-weight:700;display:flex;justify-content:space-between}
+.chart h5 small{font-weight:500;color:var(--muted);font-size:12px}
+.chart svg{width:100%;height:auto;display:block;background:var(--bg);border-radius:12px}
+.settings-targets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+
+.pchip{display:flex;align-items:center;gap:8px;height:44px;padding:0 6px 0 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);max-width:62%}
+.pchip .pname{font-weight:800;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pchip .chev-s{width:16px;height:16px;color:var(--muted)}
+.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;flex:none}
+.plist{list-style:none;margin:0 0 14px;padding:0;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:4px;padding:8px 10px;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow.active{background:var(--soft)}
+.prow input{flex:1;min-width:0;border:1px solid var(--cal);background:var(--card);border-radius:10px;padding:10px;outline:none;margin-inline-start:8px}
+.pmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:start;padding:4px 0}
+.pmain .pn{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcur{font-size:12px;font-weight:600;color:var(--good);background:var(--good-soft);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.pbtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--muted);flex:none}
+.pbtn.ok{color:var(--cal)}
+.pbtn.del:not(:disabled):hover{color:var(--over)}
+.pbtn:disabled{opacity:.3}
+.padd{display:flex;gap:8px}
+.padd input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:14px;padding:12px;outline:none}
+.padd input:focus{border-color:var(--cal)}
+.padd .primary{width:auto;padding:0 18px;height:48px}
+
+.editmeals{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px auto 0;padding:8px 14px;border-radius:99px;font-size:14px;font-weight:600;color:var(--muted)}
+.editmeals svg{width:16px;height:16px}
+.mname{flex:1;min-width:0;margin-inline-start:10px}
+.prow .mico{flex:none}
+.iconpick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.ipick{border-radius:14px;padding:3px;border:2px solid transparent}
+.ipick.on{border-color:var(--ink)}
+.macros{margin:12px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.qtag{display:inline-block;font-size:11px;font-weight:800;color:var(--cal);background:var(--cal-soft);border-radius:6px;padding:1px 5px;margin-inline-end:6px;vertical-align:1px}
+.qtyrow{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
+.ql{font-size:14px;font-weight:600;display:flex;flex-direction:column}
+.ql small{font-size:12px;color:var(--muted);font-weight:400}
+.qty{display:flex;align-items:center;gap:6px;background:var(--soft);border-radius:14px;padding:4px}
+.qty button{width:40px;height:40px;border-radius:11px;background:var(--card);font-size:20px;font-weight:700;box-shadow:var(--shadow)}
+.qty b{min-width:52px;text-align:center;font-size:16px;font-variant-numeric:tabular-nums}
+.qtotal{min-height:18px;margin:0 0 10px;font-size:13px;font-weight:600;color:var(--cal)}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+.setrow select{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;color:var(--ink)}
+.toggle{appearance:none;-webkit-appearance:none;width:48px;height:28px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;flex:none}
+.toggle::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:inset-inline-start .2s}
+.toggle:checked{background:var(--cal)}
+.toggle:checked::after{inset-inline-start:23px}
+.themebtn{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 6px}
+.bgs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.bgwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.bgwrap small{font-size:11px;color:var(--muted)}
+.bgsw{width:100%;aspect-ratio:1.3;border-radius:14px;border:1px solid var(--line);display:grid;place-items:center;padding:8px}
+.bgsw span{display:block;width:100%;height:60%;border-radius:7px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.bgsw.on{box-shadow:0 0 0 2px var(--ink)}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1px var(--line);position:relative;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.sw.on{box-shadow:0 0 0 2px var(--ink)}
+.sw.def{width:auto;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;background:var(--soft);color:var(--ink)}
+.sw.pick{background:conic-gradient(#ef4444,#f59e0b,#22c55e,#06b6d4,#6366f1,#d946ef,#ef4444);color:#fff}
+.sw.pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.askwrap{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.45);opacity:0;pointer-events:none;transition:opacity .18s}
+.askwrap.on{opacity:1;pointer-events:auto}
+.ask{background:var(--card);border-radius:22px;padding:22px 20px 18px;width:100%;max-width:340px;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);transform:scale(.96);transition:transform .18s}
+.askwrap.on .ask{transform:none}
+.ask h4{margin:0 0 8px;font-size:18px;font-weight:800}
+.ask p{margin:0 0 18px;color:var(--muted);line-height:1.55;font-size:15px}
+.askbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.askbtns .ghost{margin:0;height:48px}
+.askbtns .primary{height:48px}
+.primary.danger-fill{background:var(--over);color:#fff}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 16px}
+.toast button{color:var(--bg);font-weight:800;background:color-mix(in srgb,var(--bg) 18%,transparent);border-radius:9px;padding:6px 12px}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+
+:root{--cal-soft:color-mix(in srgb,var(--cal) 16%,transparent);--prot-soft:color-mix(in srgb,var(--prot) 16%,transparent);--on-accent:#fff}
+
+/* ===== polish layer: 8pt rhythm, type scale, motion ===== */
+:root{--ease:cubic-bezier(.2,.8,.2,1);--sheet:cubic-bezier(.32,.72,0,1);--spring:cubic-bezier(.34,1.56,.64,1)}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum" 1}
+.wrap{padding:8px 16px 168px}
+.top{padding-top:8px;padding-bottom:16px}
+.titlebar{margin-bottom:16px;gap:8px}
+.datenav{border-radius:16px;gap:4px}
+.datenav .label{cursor:pointer;border-radius:12px;padding:4px 0;transition:background .2s}
+.datenav .label small::after{content:" ▾";font-size:10px;opacity:.6}
+.hero{padding:24px 20px 20px;gap:16px;border-radius:24px;margin-top:0}
+.stat .lead{font-size:12px;font-weight:500;letter-spacing:.01em}
+.stat .big{font-size:40px;margin-top:4px}
+.stat+.stat{margin-top:16px;padding-top:16px}
+.bar{height:8px;margin-top:12px}
+.bar>span{transition:width .6s var(--ease),background .3s}
+.bar>span.over{background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.28) 0 6px,transparent 6px 12px)!important}
+.ratio{margin-top:8px}
+.card{border-radius:24px;margin-top:16px}
+.week summary{padding:16px}
+.days{padding:0 16px 16px;gap:8px}
+#meals{gap:8px;margin-top:16px}
+.meal{border-radius:20px}
+.mealhead{padding:16px 16px 8px}
+.items{padding:0 8px 8px}
+.item{padding:12px 8px;transition:background .2s}
+.item.new{animation:flash 1.2s var(--ease)}
+@keyframes flash{0%{background:var(--cal-soft)}100%{background:transparent}}
+.wrapup{margin-top:24px;height:56px;border-radius:16px}
+.fab{height:56px;padding:0 24px;transition:transform .2s var(--ease),box-shadow .2s}
+.sheet{padding:8px 20px calc(24px + env(safe-area-inset-bottom,0px));border-radius:24px 24px 0 0;transition:transform .42s var(--sheet),visibility 0s .42s}
+.sheet.on{transition:transform .42s var(--sheet)}
+.sheet h3{margin-bottom:16px}
+.grab{margin-bottom:16px}
+label.f{margin-bottom:16px}
+.primary{height:52px;border-radius:16px;transition:transform .12s var(--ease),filter .2s}
+.chips{gap:8px;margin-bottom:16px}
+.seg{margin-bottom:16px}
+button{transition:transform .12s var(--ease),background-color .2s,box-shadow .2s,opacity .2s,color .2s}
+button:active:not(:disabled){transform:scale(.96)}
+.fab:active{transform:translateX(50%) scale(.95)!important}
+@media (hover:hover){
+  .iconbtn:hover,.pchip:hover,.datenav button:hover:not(:disabled),.datenav .label:hover{background:var(--soft)}
+  .item:hover,.qlist .qadd:hover,.pmain:hover,.day:hover{background:var(--soft)}
+  .primary:hover:not(:disabled){filter:brightness(1.07)}
+  .fab:hover{transform:translateX(50%) translateY(-2px);box-shadow:0 14px 28px -8px color-mix(in srgb,var(--cal) 65%,transparent)}
+  .addmeal:hover,.editmeals:hover,.copyprev:hover{background:var(--soft)}
+}
+.swap{animation:swap .32s var(--ease)}
+@keyframes swap{from{opacity:.25;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bump{animation:bump .5s var(--spring)}
+@keyframes bump{40%{transform:scale(1.08)}}
+.rings.goal{animation:glow 1.6s var(--ease)}
+@keyframes glow{0%,100%{filter:none}40%{filter:drop-shadow(0 0 10px color-mix(in srgb,var(--good) 70%,transparent))}}
+.toast{border-radius:14px;transition:opacity .25s,transform .35s var(--spring)}
+/* insight card */
+.insight{padding:16px}
+.ins-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;font-weight:700;margin-bottom:12px}
+.ins-head small{font-size:12px;font-weight:500;color:var(--muted)}
+.ins-head small b{font-weight:700}
+.segbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--soft);gap:2px}
+.segbar i{display:block;height:100%;transition:flex-grow .6s var(--ease)}
+.seglegend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:12px;color:var(--muted)}
+.seglegend span{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.seglegend b{color:var(--ink);font-weight:700}
+.seglegend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.density{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.density b{font-weight:700}
+.ins-sep{height:1px;background:var(--line);margin:16px 0}
+/* copy from yesterday */
+.copyprev{display:flex;align-items:center;gap:6px;margin:0 16px 16px;padding:8px 12px;border-radius:12px;border:1px dashed var(--line);font-size:13px;font-weight:600;color:var(--muted)}
+.copyprev svg{width:16px;height:16px}
+/* quick search */
+.qsearch{position:relative;margin-bottom:16px}
+.qsearch input{width:100%;height:48px;border:1px solid var(--line);background:var(--bg);border-radius:14px;padding:0 44px 0 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.qsearch input:focus{border-color:var(--cal);box-shadow:0 0 0 4px var(--cal-soft)}
+.qsearch svg{position:absolute;top:14px;inset-inline-start:14px;width:20px;height:20px;color:var(--muted);pointer-events:none}
+.qactions{display:grid;gap:8px;margin-bottom:16px}
+.qact{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);text-align:start;font-weight:600}
+.qact small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.qact .ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--cal-soft);color:var(--cal);flex:none}
+/* calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.calhead b{font-size:16px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.calgrid .dow{font-size:11px;color:var(--muted);padding-bottom:4px}
+.cday{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.cday i{width:6px;height:6px;border-radius:50%;background:transparent}
+.cday.both i{background:var(--good)} .cday.part i{background:var(--warn)} .cday.none i{background:var(--over)}
+.cday.sel{background:var(--ink);color:var(--bg)}
+.cday.today:not(.sel){box-shadow:inset 0 0 0 1.5px var(--cal)}
+.cday:disabled{opacity:.3}
+.callegend{display:flex;justify-content:center;gap:16px;margin-top:16px;font-size:12px;color:var(--muted)}
+.callegend span{display:flex;align-items:center;gap:6px}
+.callegend i{width:8px;height:8px;border-radius:50%}
+/* goal calculator */
+.calcres{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 16px}
+.calcres div{background:var(--soft);border-radius:16px;padding:16px}
+.calcres b{display:block;font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.calcres span{font-size:12px;color:var(--muted)}
+.linkbtn{font-size:14px;font-weight:600;color:var(--cal);padding:8px 0;margin-bottom:8px}
+@media (prefers-reduced-motion:reduce){.swap,.bump,.rings.goal,.item.new{animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  </defs>
+</svg>
+<div class="wrap">
+  <header class="top">
+    <div class="titlebar">
+      <button class="pchip" id="profileChip"></button>
+      <div class="hdr-actions">
+        <button class="iconbtn" id="openTrends" aria-label="מגמות"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></button>
+        <button class="iconbtn" id="openSettings" aria-label="הגדרות"><svg class="i" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+    </div>
+    <nav class="datenav" aria-label="ניווט בין ימים">
+      <button id="prevDay" aria-label="יום קודם"><svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>יום קודם</button>
+      <div class="label" id="dateLabel" role="button" tabindex="0" aria-label="פתח יומן חודשי"></div>
+      <button id="todayBtn" class="today">היום</button>
+      <button id="nextDay" aria-label="יום הבא">יום הבא<svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+    </nav>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div>
+      <div class="stat cal" id="calCard">
+        <p class="lead" id="calLead">נשארו עוד</p>
+        <div class="big"><span id="calBig">0</span><span class="unit">קלוריות</span></div>
+        <div class="bar"><span id="calBar"></span></div>
+        <div class="ratio"><span><b id="calNow">0</b> / <span id="calT"></span> קק״ל</span><span id="calPct">0%</span></div>
+      </div>
+      <div class="stat prot" id="protCard">
+        <p class="lead" id="protLead">נשארו עוד</p>
+        <div class="big"><span id="protBig">0</span><span class="unit">גרם חלבון</span></div>
+        <div class="bar"><span id="protBar"></span></div>
+        <div class="ratio"><span><b id="protNow">0</b> / <span id="protT"></span> ג׳</span><span id="protPct">0%</span></div>
+      </div>
+      <p class="macros" id="macroLine" hidden></p>
+    </div>
+    <div class="rings" aria-hidden="true">
+      <svg viewBox="0 0 132 132">
+        <circle class="track" cx="66" cy="66" r="56"/>
+        <circle class="prog" id="ringCal" cx="66" cy="66" r="56" stroke="var(--cal)" stroke-dasharray="351.86" stroke-dashoffset="351.86"/>
+        <circle class="track" cx="66" cy="66" r="40"/>
+        <circle class="prog" id="ringProt" cx="66" cy="66" r="40" stroke="var(--prot)" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+      </svg>
+      <div class="ring-center"><b id="ringNum">0</b><span>קק״ל נאכלו</span></div>
+    </div>
+  </section>
+
+  <section class="card insight" id="insight" hidden aria-label="פירוט היום">
+    <div class="ins-head"><span>חלוקה לפי ארוחות</span></div>
+    <div class="segbar" id="mealSeg"></div>
+    <div class="seglegend" id="mealLegend"></div>
+    <p class="density" id="densityTxt"></p>
+    <div id="macroBlock" hidden>
+      <div class="ins-sep"></div>
+      <div class="ins-head"><span>יחס מאקרו</span><small>מתוך הקלוריות</small></div>
+      <div class="segbar" id="macroSeg"></div>
+      <div class="seglegend" id="macroLegend"></div>
+    </div>
+  </section>
+
+  <details class="card week" id="week" open>
+    <summary><span>השבוע שלך</span><span style="display:flex;align-items:center;gap:8px"><span class="rate" id="weekRate"></span><svg class="i chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></summary>
+    <div class="days" id="days"></div>
+    <div class="legend">
+      <span><i style="background:var(--cal)"></i>קלוריות בתוך היעד</span>
+      <span><i style="background:var(--prot)"></i>הגעת ליעד החלבון</span>
+    </div>
+  </details>
+
+  <section id="meals"></section>
+
+  <button class="wrapup" id="wrapBtn"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>סגור את היום</button>
+</div>
+
+<button class="fab" id="fab"><svg class="i"><use href="#i-plus"/></svg>פריט חופשי</button>
+<div class="scrim" id="scrim"></div>
+
+<!-- Add sheet -->
+<div class="sheet" id="addSheet" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+  <div class="grab"></div>
+  <h3><span id="addTitle">הוספת פריט</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <div class="chips" id="mealChips"></div>
+  <div class="seg" id="modeSeg">
+    <button data-mode="quick">מהירים</button>
+    <button data-mode="ai">תיאור או תמונה</button>
+    <button data-mode="manual">ידני</button>
+  </div>
+
+  <div id="quickPane">
+    <div class="qsearch"><input id="qSearch" type="search" placeholder="חפש או כתוב מה אכלת…" autocomplete="off" enterkeyhint="go" aria-label="חיפוש מאכל"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+    <div class="qactions" id="qActions" hidden></div>
+    <div id="favWrap"><p class="qh">מועדפים</p><ul class="qlist" id="favList"></ul></div>
+    <div id="recWrap"><p class="qh">אחרונים</p><ul class="qlist" id="recList"></ul></div>
+    <p class="note" id="quickEmpty">כאן יופיעו פריטים שכבר רשמת, להוספה בלחיצה אחת. סמן כוכב כדי לשמור פריט במועדפים.</p>
+  </div>
+
+  <div id="aiPane" hidden>
+    <p class="note err" id="aiUnavailable" hidden>הערכה אוטומטית לא זמינה בתצוגה הזו. אפשר להזין ידנית.</p>
+    <div class="photo-row" id="photoRow" hidden>
+      <button class="photo-btn" id="photoBtn"><svg class="i"><use href="#i-cam"/></svg>צלם או בחר תמונה</button>
+      <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="התמונה שנבחרה"><button id="thumbX" aria-label="הסר תמונה"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <input type="file" id="photoInput" accept="image/*" hidden>
+    </div>
+    <label class="f">תיאור
+      <textarea id="aiText" placeholder="תאר מה אכלת, או הוסף כמה מילים לתמונה. למשל: פיתה עם שקשוקה ו-2 כפות טחינה"></textarea>
+    </label>
+    <p class="note err" id="aiErr" hidden></p>
+    <button class="primary" id="aiGo"><span id="aiGoLabel">הערך קלוריות וחלבון</span></button>
+    <div class="review" id="review" hidden>
+      <p>זה מה שזוהה. אפשר לתקן, למחוק שורות, ואז להוסיף.</p>
+      <div class="rhead"><span>פריט</span><span>קלוריות</span><span>חלבון</span><span></span></div>
+      <div id="rrows"></div>
+      <div class="rtotal"><span>סה״כ</span><span id="rtotal"></span></div>
+      <button class="primary" id="addReviewed" style="margin-top:12px">הוסף ליומן</button>
+    </div>
+    <p class="note" style="margin-top:12px">ההערכה נעשית על ידי Claude ומבוססת על מנות ממוצעות. מתמונה היא פחות מדויקת — כדאי להוסיף גם כמה מילים.</p>
+  </div>
+
+  <div id="manualPane" hidden>
+    <label class="f">שם המאכל<input id="fName" type="text" placeholder="למשל: יוגורט חלבון" autocomplete="off"></label>
+    <div class="row2">
+      <label class="f">קלוריות<input id="fCal" type="number" inputmode="numeric" min="0" placeholder="0"></label>
+      <label class="f">חלבון (גרם)<input id="fProt" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"></label>
+    </div>
+    <div class="row2" id="macroFields" hidden>
+      <label class="f">פחמימות (גרם)<input id="fCarb" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"></label>
+      <label class="f">שומן (גרם)<input id="fFat" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"></label>
+    </div>
+    <div class="qtyrow">
+      <span class="ql">כמות<small>הערכים למעלה הם ליחידה אחת</small></span>
+      <div class="qty"><button id="qMinus" aria-label="הפחת כמות">−</button><b id="qVal">×1</b><button id="qPlus" aria-label="הוסף כמות">+</button></div>
+    </div>
+    <p class="qtotal" id="qTotal"></p>
+    <label class="check"><input type="checkbox" id="fFav">שמור במועדפים</label>
+    <p class="note err" id="manErr" hidden></p>
+    <button class="primary" id="saveItem">הוסף ליומן</button>
+    <button class="ghost danger" id="deleteItem" hidden>מחק פריט</button>
+  </div>
+</div>
+
+<!-- Profiles -->
+<div class="sheet" id="profSheet" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+  <div class="grab"></div>
+  <h3><span id="profTitle">משתמשים</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <ul class="plist" id="profList"></ul>
+  <div class="padd">
+    <input id="newProf" type="text" maxlength="24" placeholder="שם משתמש חדש" aria-label="שם משתמש חדש" autocomplete="off">
+    <button class="primary" id="addProf"><svg class="i"><use href="#i-plus"/></svg>הוסף</button>
+  </div>
+  <p class="note" style="margin-top:14px">לכל משתמש יומן, יעדים ומועדפים משלו. כולם נשמרים במכשיר הזה.</p>
+</div>
+
+<!-- Trends -->
+<div class="sheet" id="trendSheet" role="dialog" aria-modal="true" aria-labelledby="trendTitle">
+  <div class="grab"></div>
+  <h3><span id="trendTitle">מגמות</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <div class="seg" id="rangeSeg">
+    <button data-r="7">שבוע</button>
+    <button data-r="30" class="on">30 יום</button>
+    <button data-r="90">3 חודשים</button>
+  </div>
+  <div id="trendBody"></div>
+</div>
+
+<!-- Settings -->
+<div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="grab"></div>
+  <h3><span id="setTitle">הגדרות</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <p class="qh" style="margin-top:0">יעדים יומיים</p>
+  <button class="linkbtn" id="openCalc">לא בטוח מה היעד? מחשבון יעדים ←</button>
+  <div class="settings-targets">
+    <label class="f">קלוריות (מקסימום)<input id="sCal" type="number" inputmode="numeric" min="500" max="6000"></label>
+    <label class="f">חלבון (גרם, מינימום)<input id="sProt" type="number" inputmode="numeric" min="10" max="400"></label>
+  </div>
+  <p class="note err" id="setErr" hidden></p>
+  <button class="primary" id="saveTargets">שמור יעדים</button>
+  <p class="note" style="margin-top:10px">יעדים חדשים חלים מהיום והלאה. ימים קודמים נשמרים עם היעדים שהיו בתוקף אז.</p>
+  <p class="qh" style="margin-top:18px">התאמות</p>
+  <label class="setrow">היום מתחלף בשעה
+    <select id="sDayEnd">
+      <option value="0">00:00 (חצות)</option><option value="1">01:00</option><option value="2">02:00</option>
+      <option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option>
+    </select>
+  </label>
+  <label class="setrow">הצג פחמימות ושומן<input type="checkbox" id="sMacros" class="toggle"></label>
+  <button class="ghost themebtn" id="openMeals"><svg class="i" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>ניהול ארוחות</button>
+  <button class="ghost themebtn" id="openTheme"><svg class="i" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7h2A5.6 5.6 0 0 0 22 11c0-5-4.5-9-10-9z"/></svg>עיצוב אישי</button>
+  <div class="statusline"><i id="syncDot"></i><span id="syncText"></span></div>
+  <div class="statusline"><i id="aiDot"></i><span id="aiStatus"></span></div>
+  <button class="ghost" id="exportCsv">ייצוא כל הנתונים ל-CSV</button>
+  <button class="ghost" id="importCsv">ייבוא נתונים מ-CSV</button>
+  <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+  <button class="ghost danger" id="clearDay">מחק את כל הרשומות של היום המוצג</button>
+</div>
+
+<!-- Wrap up -->
+<div class="sheet" id="wrapSheet" role="dialog" aria-modal="true" aria-label="סיכום יום">
+  <div class="grab"></div>
+  <div class="result" id="wrapBody"></div>
+  <button class="primary" data-close>סגור</button>
+</div>
+
+<!-- Calendar -->
+<div class="sheet" id="calSheet" role="dialog" aria-modal="true" aria-labelledby="calTitle">
+  <div class="grab"></div>
+  <h3><span id="calTitle">יומן</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <div class="calhead">
+    <button class="iconbtn" id="calPrev" aria-label="חודש קודם"><svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+    <b id="calMonth"></b>
+    <button class="iconbtn" id="calNext" aria-label="חודש הבא"><svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+  </div>
+  <div class="calgrid" id="calGrid"></div>
+  <div class="callegend"><span><i style="background:var(--good)"></i>שני היעדים</span><span><i style="background:var(--warn)"></i>יעד אחד</span><span><i style="background:var(--over)"></i>אף יעד</span></div>
+  <p class="note" id="calSummary" style="margin-top:16px"></p>
+</div>
+
+<!-- Goal calculator -->
+<div class="sheet" id="calcSheet" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+  <div class="grab"></div>
+  <h3><span id="calcTitle">מחשבון יעדים</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <div class="seg" id="cSex"><button data-v="m" class="on">גבר</button><button data-v="f">אישה</button></div>
+  <div class="row2">
+    <label class="f">גיל<input id="cAge" type="number" inputmode="numeric" min="16" max="90" placeholder="30"></label>
+    <label class="f">גובה (ס״מ)<input id="cHeight" type="number" inputmode="numeric" min="130" max="220" placeholder="175"></label>
+  </div>
+  <div class="row2">
+    <label class="f">משקל (ק״ג)<input id="cWeight" type="number" inputmode="decimal" min="35" max="250" placeholder="75"></label>
+    <label class="f">פעילות
+      <select id="cAct" style="display:block;width:100%;margin-top:5px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px;color:var(--ink)">
+        <option value="1.2">יושבני</option><option value="1.375" selected>קלה (1–3 אימונים)</option><option value="1.55">בינונית (3–5)</option><option value="1.725">גבוהה (6–7)</option><option value="1.9">אתלט</option>
+      </select>
+    </label>
+  </div>
+  <div class="seg" id="cGoal"><button data-v="cut" class="on">ירידה</button><button data-v="keep">שמירה</button><button data-v="gain">עלייה</button></div>
+  <div class="calcres" id="calcRes"></div>
+  <button class="primary" id="applyCalc">החל את היעדים</button>
+  <p class="note" style="margin-top:12px">חישוב לפי נוסחת Mifflin-St Jeor. זו הערכה כללית — לא תחליף לייעוץ של דיאטנית.</p>
+</div>
+
+<!-- Meals -->
+<div class="sheet" id="mealsSheet" role="dialog" aria-modal="true" aria-labelledby="mealsTitle">
+  <div class="grab"></div>
+  <h3><span id="mealsTitle">ארוחות</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <ul class="plist" id="mealRows"></ul>
+  <p class="qh">ארוחה חדשה</p>
+  <div class="iconpick" id="iconPick"></div>
+  <div class="padd">
+    <input id="newMeal" type="text" maxlength="24" placeholder="למשל: ארוחת ביניים" aria-label="שם הארוחה החדשה" autocomplete="off">
+    <button class="primary" id="addMeal"><svg class="i"><use href="#i-plus"/></svg>הוסף</button>
+  </div>
+  <p class="note" style="margin-top:14px">הארוחות שייכות למשתמש הזה בלבד. "פריטים חופשיים" תמיד זמין דרך הכפתור הצף.</p>
+</div>
+
+<!-- Theme -->
+<div class="sheet" id="themeSheet" role="dialog" aria-modal="true" aria-labelledby="themeTitle">
+  <div class="grab"></div>
+  <h3><span id="themeTitle">עיצוב</span><button class="iconbtn" data-close aria-label="סגירה"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <p class="qh">מצב תצוגה</p>
+  <div class="seg" id="modeSegT">
+    <button data-m="auto">לפי המכשיר</button><button data-m="light">בהיר</button><button data-m="dark">כהה</button>
+  </div>
+  <p class="qh">רקע</p>
+  <div class="bgs" id="bgSw"></div>
+  <p class="qh">צבע ראשי (קלוריות וכפתורים)</p>
+  <div class="swatches" id="accSw"></div>
+  <p class="qh">צבע חלבון</p>
+  <div class="swatches" id="protSw"></div>
+  <p class="note">השינויים נשמרים אוטומטית, רק למשתמש הזה.</p>
+  <button class="ghost" id="resetTheme">חזרה לעיצוב המקורי</button>
+</div>
+
+<!-- Confirm -->
+<div class="askwrap" id="askWrap">
+  <div class="ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+    <h4 id="askTitle"></h4>
+    <p id="askText"></p>
+    <div class="askbtns"><button class="ghost" id="askCancel">ביטול</button><button class="primary" id="askOk">אישור</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  "use strict";
+  const DEF = {cal:1800, prot:120};
+  const ICONS = {
+    sun: {c:"#d97706", p:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'},
+    coffee: {c:"#92400e", p:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/>'},
+    utensils: {c:"#0d9488", p:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>'},
+    clock: {c:"#0891b2", p:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'},
+    moon: {c:"#4f46e5", p:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/>'},
+    apple: {c:"#e11d48", p:'<path d="M12 6.5c-1-1.5-3.5-2-5-1-2.5 1.6-2.5 6 0 10 1.2 2 2.8 3.5 5 2.5 2.2 1 3.8-.5 5-2.5 2.5-4 2.5-8.4 0-10-1.5-1-4-.5-5 1zM12 6.5c0-2 1-3.5 3-4"/>'},
+    cookie: {c:"#b45309", p:'<path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5h.01M16 15.5h.01M12 12h.01M11 17h.01M7 14h.01"/>'},
+    dumbbell: {c:"#16a34a", p:'<path d="M14.4 14.4 9.6 9.6M18.7 21.5l2.8-2.8M2.5 5.3l2.8-2.8M3.9 9.6l5.7-5.7M14.4 20.1l5.7-5.7M6.2 11.7l6.1 6.1M11.7 6.2l6.1 6.1"/>'},
+    shake: {c:"#7c3aed", p:'<path d="M8 2h8l-1.5 20h-5z"/><path d="M7 7h10"/>'},
+    zap: {c:"#64748b", p:'<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'}
+  };
+  const DEF_MEALS = [
+    {id:"breakfast", name:"ארוחת בוקר", short:"בוקר", icon:"sun"},
+    {id:"lunch", name:"ארוחת צהריים", short:"צהריים", icon:"utensils"},
+    {id:"dinner", name:"ארוחת ערב", short:"ערב", icon:"moon"},
+    {id:"snacks", name:"נשנושים", short:"נשנושים", icon:"apple"}
+  ];
+  const FREE_MEAL = {id:"free", name:"פריטים חופשיים", short:"ללא ארוחה", icon:"zap"};
+  const mealList = () => [...state.prefs.meals, FREE_MEAL];
+  const mealOf = id => state.prefs.meals.find(m => m.id === id) || FREE_MEAL;
+  const mealName = id => mealOf(id).name;
+  const HE_DAYS = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
+  const LS_DAYS = "calorieTracker:v1:days", LS_META = "calorieTracker:v1:meta";
+  const LS_PROFILES = "calorieTracker:v1:profiles", LS_ACTIVE = "calorieTracker:v1:active";
+  const lsKey = (base, pid) => pid === "main" ? base : base + ":" + pid;
+  const COLORS = ["#0d9488","#4f46e5","#e11d48","#d97706","#0891b2","#7c3aed","#16a34a","#db2777"];
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString("he-IL");
+  const fmt1 = n => (Math.round(n*10)/10).toLocaleString("he-IL");
+  const r1 = n => Math.round(n*10)/10;
+  const pad = n => String(n).padStart(2,"0");
+  const keyOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  const parseKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); };
+  const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate()+n); return keyOf(d); };
+  const todayKey = () => keyOf(new Date(Date.now() - ((typeof state !== "undefined" && state.prefs.dayEnd) || 0) * 36e5));
+  const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const norm = s => String(s||"").trim().replace(/\s+/g," ");
+
+  const state = {
+    date: "",
+    days: {},      // date -> entries
+    dayT: {},      // date -> {cal, prot} targets in force for that day
+    prefs: defPrefs(),
+    db: null, userId: null, sample: null, imgLimits: null, downloads: null,
+    meal: "breakfast", mode: "quick", editing: null, photo: null, range: 30,
+    pid: "main", profiles: [{id: "main", name: "דניאל", color: 0}], editPid: null
+  };
+
+  const cur = () => ({cal: state.prefs.cal, prot: state.prefs.prot});
+  function defPrefs(){ return {cal: DEF.cal, prot: DEF.prot, favs: [], dayEnd: 0, macros: false, meals: DEF_MEALS.map(m => ({...m})), theme: {mode: "auto", accent: null, protColor: null, bg: "slate"}}; }
+  function parsePrefs(p){
+    const d = defPrefs(); if (!p) return d;
+    return {
+      cal: +p.cal || d.cal, prot: +p.prot || d.prot,
+      favs: Array.isArray(p.favs) ? p.favs.map(f => ({...f})) : [],
+      dayEnd: Math.min(6, Math.max(0, +p.dayEnd || 0)),
+      macros: !!p.macros,
+      body: p.body && typeof p.body === "object" ? {...p.body} : null,
+      meals: Array.isArray(p.meals) && p.meals.length ? p.meals.filter(m => m && m.id && m.name).map(m => ({...m})) : d.meals,
+      theme: {...d.theme, ...(p.theme || {})}
+    };
+  }
+  const prefsOut = () => JSON.parse(JSON.stringify(state.prefs));
+  const tOf = k => state.dayT[k] || cur();
+
+  /* ---------- storage ---------- */
+  function loadProfilesLocal(){
+    try { const p = JSON.parse(localStorage.getItem(LS_PROFILES) || "null"); if (Array.isArray(p) && p.length) state.profiles = p; } catch(e) {}
+    try { const a = localStorage.getItem(LS_ACTIVE); if (a && state.profiles.some(p => p.id === a)) state.pid = a; else state.pid = state.profiles[0].id; } catch(e) { state.pid = state.profiles[0].id; }
+  }
+  function saveProfilesLocal(){
+    try { localStorage.setItem(LS_PROFILES, JSON.stringify(state.profiles)); localStorage.setItem(LS_ACTIVE, state.pid); } catch(e) {}
+  }
+  function loadLocal(){
+    state.days = {}; state.dayT = {}; state.prefs = defPrefs();
+    try { const d = JSON.parse(localStorage.getItem(lsKey(LS_DAYS, state.pid)) || "null"); if (d) state.days = d; } catch(e) {}
+    try {
+      const m = JSON.parse(localStorage.getItem(lsKey(LS_META, state.pid)) || "null");
+      if (m) { if (m.dayT) state.dayT = m.dayT; if (m.prefs) state.prefs = parsePrefs(m.prefs); }
+    } catch(e) {}
+  }
+  function saveLocal(){
+    try { localStorage.setItem(lsKey(LS_DAYS, state.pid), JSON.stringify(state.days)); localStorage.setItem(lsKey(LS_META, state.pid), JSON.stringify({dayT: state.dayT, prefs: state.prefs})); } catch(e) {}
+  }
+  const chains = {};
+  function queue(id, fn){
+    chains[id] = (chains[id] || Promise.resolve()).then(fn).catch(() => toast("השמירה בענן נכשלה — הנתונים נשמרו במכשיר"));
+  }
+  const mainCol = () => "data/users/" + state.userId;
+  const colFor = pid => pid === "main" ? mainCol() : mainCol() + "/p_" + pid + "/days";
+  function ref(id){ return state.db.collection(colFor(state.pid)).doc(id); }
+  function persistDay(k){
+    saveLocal();
+    if (!state.db || !state.userId) return;
+    const entries = (state.days[k] || []).map(e => ({...e}));
+    const targets = {...tOf(k)};
+    const r = ref(k);
+    queue(state.pid + ":" + k, () => entries.length ? r.set({entries, targets, updatedAt: Date.now()}) : r.delete());
+  }
+  function persistPrefs(){
+    saveLocal();
+    if (!state.db || !state.userId) return;
+    const p = prefsOut();
+    const r = ref("prefs");
+    queue(state.pid + ":prefs", () => r.set(p));
+  }
+
+  async function initCloud(){
+    if (!window.claude || !window.claude.use) { setStatus(); return; }
+    window.claude.use("sample").then(async s => {
+      state.sample = s;
+      if (s) { try { const l = await s.limits(); state.imgLimits = l && l.images ? l.images : null; } catch(e) {} }
+      setStatus();
+    }).catch(setStatus);
+    window.claude.use("downloads").then(d => { state.downloads = d; setStatus(); }).catch(() => {});
+    try {
+      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!db || !user) { setStatus(); return; }
+      const id = await user.id();
+      if (!id) { setStatus(); return; }
+      state.db = db; state.userId = id; setStatus();
+      let firstReg = true;
+      db.collection(mainCol()).doc("profiles").onSnapshot(snap => {
+        const data = snap.exists ? snap.data() : null;
+        if (data && Array.isArray(data.list) && data.list.length) {
+          state.profiles = data.list.map(p => ({...p}));
+          if (!state.profiles.some(p => p.id === state.pid)) { switchProfile(state.profiles[0].id); }
+        } else if (firstReg) persistProfiles();
+        firstReg = false;
+        saveProfilesLocal(); renderChip();
+        if (openSheet && openSheet.id === "profSheet") renderProfiles();
+      }, () => {});
+      subscribeDays();
+    } catch(e) { setStatus(); }
+  }
+
+  let unsubDays = null;
+  function subscribeDays(){
+    if (unsubDays) { try { unsubDays(); } catch(e) {} unsubDays = null; }
+    if (!state.db || !state.userId) return;
+    const pid = state.pid; let first = true;
+    unsubDays = state.db.collection(colFor(pid)).onSnapshot(snap => {
+      if (pid !== state.pid) return;
+      const days = {}, dayT = {}; let prefs = null;
+      snap.docs.forEach(d => {
+        const data = d.data(); if (!data) return;
+        if (d.id === "prefs") prefs = data;
+        else if (DATE_RE.test(d.id) && Array.isArray(data.entries)) {
+          days[d.id] = data.entries.map(e => ({...e}));
+          if (data.targets) dayT[d.id] = {...data.targets};
+        }
+      });
+      if (first) {
+        first = false;
+        Object.keys(state.days).forEach(k => {
+          if (!days[k] && (state.days[k] || []).length) {
+            days[k] = state.days[k]; if (state.dayT[k]) dayT[k] = state.dayT[k];
+            persistDay(k);
+          }
+        });
+        if (!prefs) persistPrefs();
+      }
+      state.days = days;
+      state.dayT = {...state.dayT, ...dayT};
+      if (prefs) { const wasEnd = state.prefs.dayEnd; state.prefs = parsePrefs(prefs); applyTheme(); if (wasEnd !== state.prefs.dayEnd && state.date === keyOfShift(wasEnd)) state.date = todayKey(); }
+      saveLocal(); render();
+      if (openSheet && openSheet.id === "addSheet" && state.mode === "quick") renderQuick();
+    }, () => {});
+  }
+
+  /* ---------- profiles ---------- */
+  function persistProfiles(){
+    saveProfilesLocal();
+    if (!state.db || !state.userId) return;
+    const list = state.profiles.map(p => ({...p}));
+    const r = state.db.collection(mainCol()).doc("profiles");
+    queue("profiles", () => r.set({list}));
+  }
+  const activeProfile = () => state.profiles.find(p => p.id === state.pid) || state.profiles[0];
+  const colorOf = p => COLORS[(p.color || 0) % COLORS.length];
+  const initial = name => (norm(name)[0] || "?");
+  function avatar(p, size){
+    const a = document.createElement("span"); a.className = "avatar"; a.textContent = initial(p.name);
+    a.style.background = colorOf(p); if (size) { a.style.width = a.style.height = size + "px"; a.style.fontSize = Math.round(size * .42) + "px"; }
+    return a;
+  }
+  function renderChip(){
+    const p = activeProfile(), chip = $("profileChip"); chip.innerHTML = "";
+    const nm = document.createElement("span"); nm.className = "pname"; nm.textContent = p.name;
+    chip.append(avatar(p), nm);
+    chip.insertAdjacentHTML("beforeend", '<svg class="i chev-s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>');
+    chip.setAttribute("aria-label", "משתמש פעיל: " + p.name + ". החלפת משתמש");
+  }
+  function switchProfile(pid){
+    if (pid === state.pid && state.days) { hideAll(); return; }
+    state.pid = pid; saveProfilesLocal();
+    loadLocal(); applyTheme(); state.date = todayKey();
+    renderChip(); render(); subscribeDays();
+  }
+  function renderProfiles(){
+    const ul = $("profList"); ul.innerHTML = "";
+    state.profiles.forEach(p => {
+      const li = document.createElement("li"); li.className = "prow" + (p.id === state.pid ? " active" : "");
+      if (state.editPid === p.id) {
+        const inp = document.createElement("input"); inp.type = "text"; inp.value = p.name; inp.maxLength = 24; inp.setAttribute("aria-label", "שם חדש");
+        const ok = document.createElement("button"); ok.className = "pbtn ok"; ok.setAttribute("aria-label", "שמור שם");
+        ok.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+        const save = () => { const n = norm(inp.value); if (!n) return inp.focus(); p.name = n; state.editPid = null; persistProfiles(); renderChip(); renderProfiles(); };
+        ok.onclick = save; inp.onkeydown = e => { if (e.key === "Enter") save(); if (e.key === "Escape") { state.editPid = null; renderProfiles(); } };
+        li.append(avatar(p, 40), inp, ok); ul.append(li); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+        return;
+      }
+      const main = document.createElement("button"); main.className = "pmain";
+      const t = document.createElement("span"); t.className = "pn"; t.textContent = p.name;
+      main.append(avatar(p, 40), t);
+      if (p.id === state.pid) main.insertAdjacentHTML("beforeend", '<span class="pcur">מחובר עכשיו</span>');
+      main.onclick = () => { hideAll(); switchProfile(p.id); toast("עברת ל" + p.name); };
+      const ed = document.createElement("button"); ed.className = "pbtn"; ed.setAttribute("aria-label", "שינוי שם " + p.name);
+      ed.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+      ed.onclick = () => { state.editPid = p.id; renderProfiles(); };
+      const del = document.createElement("button"); del.className = "pbtn del"; del.setAttribute("aria-label", "מחיקת " + p.name);
+      del.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+      del.disabled = state.profiles.length < 2;
+      del.onclick = () => deleteProfile(p);
+      li.append(main, ed, del); ul.append(li);
+    });
+  }
+  async function deleteProfile(p){
+    if (state.profiles.length < 2) return;
+    if (!await ask("מחיקת משתמש", `למחוק את "${p.name}" ואת כל היומן, היעדים והעיצוב שלו? את זה אי אפשר לבטל.`, "מחק משתמש", true)) return;
+    state.profiles = state.profiles.filter(x => x.id !== p.id);
+    if (p.id === state.pid) switchProfile(state.profiles[0].id);
+    persistProfiles(); renderChip(); renderProfiles();
+    try { localStorage.removeItem(lsKey(LS_DAYS, p.id)); localStorage.removeItem(lsKey(LS_META, p.id)); } catch(e) {}
+    if (state.db && state.userId) {
+      try {
+        const snap = await state.db.collection(colFor(p.id)).get();
+        for (const d of snap.docs) if (d.id === "prefs" || DATE_RE.test(d.id)) await state.db.collection(colFor(p.id)).doc(d.id).delete();
+      } catch(e) {}
+    }
+    toast("המשתמש נמחק");
+  }
+  $("profileChip").onclick = () => { state.editPid = null; renderProfiles(); $("newProf").value = ""; show("profSheet"); };
+  $("addProf").onclick = () => {
+    const n = norm($("newProf").value);
+    if (!n) { $("newProf").focus(); return; }
+    if (state.profiles.length >= 8) { toast("אפשר עד 8 משתמשים"); return; }
+    const used = new Set(state.profiles.map(p => p.color));
+    let c = 0; while (used.has(c) && c < COLORS.length) c++;
+    const p = {id: uid(), name: n.slice(0, 24), color: c % COLORS.length};
+    state.profiles.push(p); persistProfiles();
+    hideAll(); switchProfile(p.id); toast("נוצר משתמש חדש: " + p.name);
+  };
+  $("newProf").onkeydown = e => { if (e.key === "Enter") $("addProf").click(); };
+
+  function setStatus(){
+    const cloud = !!(state.db && state.userId);
+    $("syncDot").className = cloud ? "ok" : "";
+    $("syncText").textContent = cloud ? "מסונכרן לחשבון שלך — זמין בכל מכשיר" : "הנתונים נשמרים בטלפון הזה (מומלץ לגבות ב-CSV מדי פעם)";
+    const ai = !!state.sample;
+    $("aiDot").className = ai ? "ok" : "";
+    $("aiStatus").textContent = !ai ? "הערכה אוטומטית לא זמינה — הזנה ידנית בלבד" : state.imgLimits ? "הערכה מטקסט ומתמונה זמינה" : "הערכה מטקסט זמינה (ייתכן שתמונות לא נתמכות בתצוגה הזו)";
+    $("aiUnavailable").hidden = ai;
+    $("aiGo").disabled = !ai;
+    $("photoRow").hidden = !ai;
+    if (state.imgLimits) $("photoInput").accept = state.imgLimits.mediaTypes.join(",");
+    $("exportCsv").hidden = !state.downloads;
+  }
+
+  /* ---------- helpers ---------- */
+  function totals(k){
+    return (state.days[k] || []).reduce((a,e) => ({cal: a.cal + (+e.cal||0), prot: a.prot + (+e.prot||0), carbs: a.carbs + (+e.carbs||0), fat: a.fat + (+e.fat||0)}), {cal:0, prot:0, carbs:0, fat:0});
+  }
+  const keyOfShift = h => keyOf(new Date(Date.now() - (h||0) * 36e5));
+  const unitOf = e => {
+    const q = +e.qty || 1;
+    return {name: e.name, cal: e.ucal ?? e.cal / q, prot: e.uprot ?? e.prot / q, carbs: e.ucarb ?? (+e.carbs||0) / q, fat: e.ufat ?? (+e.fat||0) / q};
+  };
+  function buildEntry(u, qty, meal, base){
+    const q = Math.max(0.25, +qty || 1);
+    const ucal = +u.cal || 0, uprot = +u.prot || 0, ucarb = +u.carbs || 0, ufat = +u.fat || 0;
+    return {...(base || {id: uid(), ts: Date.now()}), name: norm(u.name), meal,
+      qty: q, ucal, uprot: r1(uprot), ucarb: r1(ucarb), ufat: r1(ufat),
+      cal: Math.round(ucal * q), prot: r1(uprot * q), carbs: r1(ucarb * q), fat: r1(ufat * q)};
+  }
+  function dayStatus(k){
+    const has = (state.days[k] || []).length > 0, t = totals(k), T = tOf(k);
+    return {has, t, T, calOk: has && t.cal <= T.cal, protOk: has && t.prot >= T.prot};
+  }
+  function addEntry(meal, it){
+    const k = state.date;
+    if (!state.dayT[k]) state.dayT[k] = cur();
+    const list = (state.days[k] || []).map(e => ({...e}));
+    const ne = buildEntry(it, it.qty || 1, meal); newIds.add(ne.id); haptic();
+    list.push(ne);
+    state.days[k] = list;
+  }
+  const isFav = name => state.prefs.favs.some(f => f.name === norm(name));
+  function toggleFav(it, on){
+    const n = norm(it.name); if (!n) return;
+    const favs = state.prefs.favs.filter(f => f.name !== n);
+    if (on === undefined ? !isFav(n) : on) favs.unshift({name: n, cal: Math.round(+it.cal||0), prot: r1(+it.prot||0), carbs: r1(+it.carbs||0), fat: r1(+it.fat||0)});
+    state.prefs.favs = favs.slice(0, 40);
+    persistPrefs();
+  }
+  function recentItems(){
+    const seen = new Set(state.prefs.favs.map(f => f.name)), out = [];
+    const keys = Object.keys(state.days).sort().reverse();
+    for (const k of keys) {
+      const list = (state.days[k] || []).slice().sort((a,b) => (b.ts||0) - (a.ts||0));
+      for (const e of list) {
+        const n = norm(e.name); if (!n || seen.has(n)) continue;
+        seen.add(n); const u = unitOf(e); out.push({name: n, cal: Math.round(u.cal), prot: r1(u.prot), carbs: r1(u.carbs), fat: r1(u.fat)});
+        if (out.length >= 15) return out;
+      }
+    }
+    return out;
+  }
+
+  /* ---------- validation ---------- */
+  // returns {error} for impossible values, {warns:[...]} for unusual ones
+  function checkItem(u, qty){
+    const cal = (+u.cal||0) * (qty||1), prot = (+u.prot||0) * (qty||1), carbs = (+u.carbs||0) * (qty||1), fat = (+u.fat||0) * (qty||1);
+    if (cal > 10000) return {error: "יותר מ-10,000 קלוריות לפריט אחד — כנראה טעות הקלדה."};
+    if (prot > 500) return {error: "יותר מ-500 גרם חלבון לפריט אחד — כנראה טעות הקלדה."};
+    const warns = [];
+    if (cal > 2500) warns.push(`${fmt(cal)} קלוריות לפריט אחד`);
+    if (prot > 150) warns.push(`${fmt1(prot)} גרם חלבון לפריט אחד`);
+    const fromMacros = prot * 4 + carbs * 4 + fat * 9;
+    if (cal > 0 && fromMacros > cal * 1.25 + 20) warns.push(`הרכיבים לבדם שווים כ-${fmt(fromMacros)} קלוריות, יותר מ-${fmt(cal)} שהוזנו`);
+    else if (cal === 0 && fromMacros > 20) warns.push("0 קלוריות אבל יש חלבון/פחמימות/שומן");
+    return {warns};
+  }
+  async function confirmValues(list){
+    for (const it of list) {
+      const r = checkItem(it, it.qty);
+      if (r.error) return {error: (it.name ? it.name + ": " : "") + r.error};
+      if (r.warns.length) {
+        const ok = await ask("הערך נראה חריג", `${it.name}: ${r.warns.join(" · ")}. לשמור בכל זאת?`, "שמור בכל זאת", false);
+        if (!ok) return {cancel: true};
+      }
+    }
+    return {};
+  }
+
+  /* ---------- confirm modal ---------- */
+  let askResolve = null;
+  function ask(title, text, okLabel, danger){
+    return new Promise(res => {
+      if (askResolve) askResolve(false);
+      askResolve = res;
+      $("askTitle").textContent = title; $("askText").textContent = text;
+      $("askOk").textContent = okLabel || "אישור";
+      $("askOk").className = "primary" + (danger ? " danger-fill" : "");
+      $("askWrap").classList.add("on"); setTimeout(() => $("askCancel").focus(), 50);
+    });
+  }
+  function closeAsk(v){ $("askWrap").classList.remove("on"); const r = askResolve; askResolve = null; if (r) r(v); }
+  $("askOk").onclick = () => closeAsk(true);
+  $("askCancel").onclick = () => closeAsk(false);
+  $("askWrap").onclick = e => { if (e.target === $("askWrap")) closeAsk(false); };
+
+  /* ---------- motion helpers ---------- */
+  const reduced = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tween(el, to, dec){
+    const from = el._v ?? to; el._v = to;
+    const f = dec ? fmt1 : fmt;
+    if (reduced() || from === to) { el.textContent = f(to); return; }
+    const t0 = performance.now(), dur = 520;
+    cancelAnimationFrame(el._raf);
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = f(from + (to - from) * e);
+      if (p < 1) el._raf = requestAnimationFrame(step);
+    };
+    el._raf = requestAnimationFrame(step);
+  }
+  function pulse(el, cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); el.addEventListener("animationend", () => el.classList.remove(cls), {once: true}); }
+  const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch(e) {} };
+  let lastR = {key: null, prot: 0, cal: 0}, newIds = new Set();
+
+  /* ---------- render main ---------- */
+  function render(){
+    const k = state.date, s = dayStatus(k), t = s.t, T = s.T, isToday = k === todayKey();
+    const d = parseKey(k);
+    const dayDiff = Math.round((parseKey(todayKey()) - d) / 864e5);
+    const rel = isToday ? "היום" : dayDiff === 1 ? "אתמול" : d.toLocaleDateString("he-IL",{weekday:"long"});
+    $("dateLabel").textContent = rel;
+    const sm = document.createElement("small"); sm.textContent = d.toLocaleDateString("he-IL", {day:"numeric", month:"long"}); $("dateLabel").append(sm);
+    $("todayBtn").hidden = isToday;
+    $("nextDay").disabled = k >= todayKey();
+
+    const calLeft = T.cal - t.cal, calPct = t.cal / T.cal * 100, over = calLeft < 0;
+    $("calCard").classList.toggle("over", over);
+    $("calLead").textContent = over ? "חריגה של" : "נשארו עוד";
+    tween($("calBig"), Math.abs(calLeft), false);
+    $("calNow").textContent = fmt(t.cal); $("calT").textContent = fmt(T.cal);
+    $("calPct").textContent = Math.round(calPct) + "%";
+    const calColor = over ? "var(--over)" : calPct > 90 ? "var(--warn)" : "var(--cal)";
+    $("calBar").style.width = Math.min(100, calPct) + "%"; $("calBar").style.background = calColor; $("calBar").classList.toggle("over", over);
+
+    const protLeft = T.prot - t.prot, protPct = t.prot / T.prot * 100, done = protLeft <= 0;
+    $("protCard").classList.toggle("done", done);
+    $("protLead").textContent = done ? "הגעת ליעד! מעל ב-" : "נשארו עוד";
+    tween($("protBig"), Math.abs(protLeft), true);
+    $("protNow").textContent = fmt1(t.prot); $("protT").textContent = fmt(T.prot);
+    $("protPct").textContent = Math.round(protPct) + "%";
+    $("protBar").style.width = Math.min(100, protPct) + "%"; $("protBar").style.background = done ? "var(--good)" : "var(--prot)";
+
+    $("ringCal").style.strokeDashoffset = 351.86 * (1 - Math.min(1, calPct/100)); $("ringCal").style.stroke = calColor;
+    $("ringProt").style.strokeDashoffset = 251.33 * (1 - Math.min(1, protPct/100)); $("ringProt").style.stroke = done ? "var(--good)" : "var(--prot)";
+    tween($("ringNum"), t.cal, false);
+    $("macroLine").hidden = true;
+    renderInsight(k, t, T);
+
+    // transitions & goal moments
+    const rkey = state.pid + "|" + k;
+    if (lastR.key && lastR.key !== rkey) { pulse(document.querySelector(".hero"), "swap"); pulse($("meals"), "swap"); }
+    else if (lastR.key === rkey) {
+      if (lastR.prot < T.prot && t.prot >= T.prot && isToday) {
+        pulse($("protCard"), "bump"); pulse(document.querySelector(".rings"), "goal"); haptic();
+        if (typeof confetti === "function" && !reduced()) confetti({particleCount: 70, spread: 70, origin: {y: .3}, colors: ["#16a34a","#4ade80","#a7f3d0"], zIndex: 100});
+        setTimeout(() => toast("🎯 הגעת ליעד החלבון!"), 250);
+      } else if (lastR.cal <= T.cal && t.cal > T.cal) pulse($("calCard"), "bump");
+    }
+    lastR = {key: rkey, prot: t.prot, cal: t.cal};
+    $("macroLine").textContent = `פחמימות ${fmt1(t.carbs)} ג׳ · שומן ${fmt1(t.fat)} ג׳`;
+
+    renderMeals(); renderWeek();
+  }
+
+  function renderInsight(k, t, T){
+    const list = state.days[k] || [];
+    $("insight").hidden = !(t.cal > 0);
+    if (!(t.cal > 0)) return;
+    const known = new Set(state.prefs.meals.map(m => m.id));
+    const segs = mealList().map(m => {
+      const c = list.filter(e => m.id === "free" ? !known.has(e.meal) : e.meal === m.id).reduce((a,e) => a + (+e.cal||0), 0);
+      return {m, c};
+    }).filter(x => x.c > 0);
+    $("mealSeg").innerHTML = segs.map(x => `<i style="flex-grow:${x.c};background:${(ICONS[x.m.icon]||ICONS.clock).c}"></i>`).join("");
+    const L = $("mealLegend"); L.innerHTML = "";
+    segs.forEach(x => {
+      const sp = document.createElement("span");
+      sp.innerHTML = `<i style="background:${(ICONS[x.m.icon]||ICONS.clock).c}"></i>`;
+      sp.append(x.m.short || x.m.name, " "); const b = document.createElement("b"); b.textContent = Math.round(x.c / t.cal * 100) + "%"; sp.append(b);
+      L.append(sp);
+    });
+    // protein density: grams of protein per 100 kcal vs what the targets imply
+    const dens = t.prot / t.cal * 100, need = T.prot / T.cal * 100;
+    $("densityTxt").innerHTML = `צפיפות חלבון: <b style="color:${dens >= need ? "var(--good)" : "var(--ink)"}">${fmt1(dens)} ג׳ ל-100 קק״ל</b> · כדי לעמוד בשני היעדים צריך ${fmt1(need)}`;
+    const hasMac = state.prefs.macros && (t.carbs > 0 || t.fat > 0);
+    $("macroBlock").hidden = !hasMac;
+    if (hasMac) {
+      const parts = [{n: "חלבון", g: t.prot, k: t.prot * 4, c: "var(--prot)"}, {n: "פחמימות", g: t.carbs, k: t.carbs * 4, c: "#f59e0b"}, {n: "שומן", g: t.fat, k: t.fat * 9, c: "#ec4899"}];
+      const sum = parts.reduce((a,p) => a + p.k, 0) || 1;
+      $("macroSeg").innerHTML = parts.filter(p => p.k > 0).map(p => `<i style="flex-grow:${p.k};background:${p.c}"></i>`).join("");
+      const ML = $("macroLegend"); ML.innerHTML = "";
+      parts.forEach(p => { const sp = document.createElement("span"); sp.innerHTML = `<i style="background:${p.c}"></i>`; sp.append(`${p.n} ${fmt1(p.g)} ג׳ `); const b = document.createElement("b"); b.textContent = Math.round(p.k / sum * 100) + "%"; sp.append(b); ML.append(sp); });
+    }
+  }
+  function prevMealEntries(mealId){
+    // most recent earlier day (within 7 days) that has entries for this meal
+    for (let i = 1; i <= 7; i++) {
+      const k = addDays(state.date, -i), es = (state.days[k] || []).filter(e => e.meal === mealId);
+      if (es.length) return {k, es, i};
+    }
+    return null;
+  }
+  function mealIcon(m){
+    const I = ICONS[m.icon] || ICONS.clock;
+    const ic = document.createElement("span"); ic.className = "mico"; ic.style.setProperty("--c", I.c);
+    ic.innerHTML = '<svg class="i" viewBox="0 0 24 24">' + I.p + '</svg>';
+    return ic;
+  }
+  function renderMeals(){
+    const box = $("meals"); box.innerHTML = "";
+    const list = state.days[state.date] || [];
+    const known = new Set(state.prefs.meals.map(m => m.id));
+    mealList().forEach(m => {
+      const items = list.filter(e => m.id === "free" ? !known.has(e.meal) : e.meal === m.id);
+      if (m.id === "free" && !items.length) return;
+      const sec = document.createElement("div"); sec.className = "meal";
+      const sum = items.reduce((a,e) => ({c: a.c + (+e.cal||0), p: a.p + (+e.prot||0)}), {c:0, p:0});
+      const head = document.createElement("div"); head.className = "mealhead";
+      const h = document.createElement("h2");
+      const ic = mealIcon(m);
+      const tt = document.createElement("span"); tt.className = "t"; tt.append(m.name);
+      const s2 = document.createElement("span"); s2.className = "sum";
+      s2.textContent = items.length ? fmt(sum.c) + " קק״ל · " + fmt1(sum.p) + " ג׳ חלבון" : "ריק";
+      tt.append(s2); h.append(ic, tt);
+      const add = document.createElement("button"); add.className = "addmeal";
+      add.innerHTML = '<svg class="i"><use href="#i-plus"/></svg>הוסף';
+      add.setAttribute("aria-label", "הוסף ל" + m.name);
+      add.onclick = () => openAdd(m.id);
+      head.append(h, add); sec.append(head);
+      if (!items.length && m.id !== "free") {
+        const pv = prevMealEntries(m.id);
+        if (pv) {
+          const kc = pv.es.reduce((a,e) => a + (+e.cal||0), 0);
+          const cp = document.createElement("button"); cp.className = "copyprev";
+          cp.innerHTML = '<svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+          cp.append(`${pv.i === 1 ? "כמו אתמול" : "כמו לפני " + pv.i + " ימים"} · ${pv.es.length} פריטים · ${fmt(kc)} קק״ל`);
+          cp.onclick = () => {
+            const k = state.date; if (!state.dayT[k]) state.dayT[k] = cur();
+            const copies = pv.es.map(e => ({...e, id: uid(), ts: Date.now()}));
+            state.days[k] = [...(state.days[k] || []), ...copies]; copies.forEach(c => newIds.add(c.id));
+            persistDay(k); render(); haptic();
+            toast(`הועתקו ${copies.length} פריטים`, "בטל", () => { const ids = new Set(copies.map(c => c.id)); state.days[k] = (state.days[k] || []).filter(e => !ids.has(e.id)); persistDay(k); render(); });
+          };
+          sec.append(cp);
+        }
+      }
+      if (items.length) {
+        const ul = document.createElement("ul"); ul.className = "items";
+        items.forEach(it => {
+          const li = document.createElement("li");
+          const b = document.createElement("button"); b.className = "item"; b.style.width = "100%";
+          const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = it.name;
+          if ((+it.qty || 1) !== 1) { const q = document.createElement("span"); q.className = "qtag"; q.textContent = "×" + fmt1(it.qty); nm.prepend(q); }
+          const pc = document.createElement("span"); pc.className = "pill c"; pc.textContent = fmt(it.cal) + " קק״ל";
+          const pp = document.createElement("span"); pp.className = "pill p"; pp.textContent = fmt1(it.prot) + " ג׳";
+          b.append(nm, pc, pp); b.onclick = () => openEdit(it);
+          if (newIds.has(it.id)) { b.classList.add("new"); newIds.delete(it.id); }
+          li.append(b); ul.append(li);
+        });
+        sec.append(ul);
+      }
+      box.append(sec);
+    });
+    const ed = document.createElement("button"); ed.className = "editmeals";
+    ed.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>עריכת ארוחות';
+    ed.onclick = openMealsSheet; box.append(ed);
+  }
+
+  function renderWeek(){
+    const box = $("days"); box.innerHTML = "";
+    const end = todayKey(); let met = 0;
+    for (let i = 6; i >= 0; i--) {
+      const k = addDays(end, -i), s = dayStatus(k);
+      if (s.calOk && s.protOk) met++;
+      const b = document.createElement("button"); b.className = "day" + (k === state.date ? " sel" : "");
+      b.setAttribute("aria-label", parseKey(k).toLocaleDateString("he-IL",{weekday:"long", day:"numeric", month:"numeric"}) + (s.has ? `: ${fmt(s.t.cal)} קלוריות, ${fmt1(s.t.prot)} גרם חלבון` : ": אין רשומות"));
+      const cols = document.createElement("div"); cols.className = "cols";
+      const c1 = document.createElement("i"), c2 = document.createElement("i");
+      c1.style.height = Math.max(4, Math.min(44, s.t.cal / s.T.cal * 40)) + "px";
+      c1.style.background = !s.has ? "var(--line)" : s.t.cal > s.T.cal ? "var(--over)" : "var(--cal)";
+      c2.style.height = Math.max(4, Math.min(44, s.t.prot / s.T.prot * 40)) + "px";
+      c2.style.background = !s.has ? "var(--line)" : s.protOk ? "var(--good)" : "var(--prot)";
+      cols.append(c1, c2);
+      const dots = document.createElement("div"); dots.className = "dots";
+      const d1 = document.createElement("i"), d2 = document.createElement("i");
+      if (s.calOk) d1.style.background = "var(--cal)";
+      if (s.protOk) d2.style.background = "var(--prot)";
+      dots.append(d1, d2);
+      const lbl = document.createElement("span"); lbl.textContent = HE_DAYS[parseKey(k).getDay()];
+      b.append(cols, dots, lbl);
+      b.onclick = () => { state.date = k; render(); };
+      box.append(b);
+    }
+    $("weekRate").textContent = `${met} מתוך 7 ימים ביעד`;
+    $("weekRate").style.cssText = met ? "" : "color:var(--muted);background:var(--soft)";
+  }
+
+  /* ---------- sheets ---------- */
+  let openSheet = null;
+  function show(id){ hideAll(); openSheet = $(id); $("scrim").classList.add("on"); openSheet.classList.add("on"); }
+  function hideAll(){ document.querySelectorAll(".sheet.on").forEach(s => s.classList.remove("on")); $("scrim").classList.remove("on"); openSheet = null; }
+  $("scrim").onclick = hideAll;
+  document.querySelectorAll("[data-close]").forEach(b => b.onclick = hideAll);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") hideAll(); });
+
+  function renderChips(){
+    const box = $("mealChips"); box.innerHTML = "";
+    if (!mealList().some(m => m.id === state.meal)) state.meal = "free";
+    mealList().forEach(m => {
+      const b = document.createElement("button"); b.textContent = m.short || m.name;
+      b.className = state.meal === m.id ? "on" : "";
+      b.onclick = () => { state.meal = m.id; renderChips(); };
+      box.append(b);
+    });
+  }
+  function setMode(mode){
+    state.mode = mode;
+    document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+    $("quickPane").hidden = mode !== "quick"; $("aiPane").hidden = mode !== "ai"; $("manualPane").hidden = mode !== "manual";
+    if (mode === "quick") renderQuick();
+  }
+  document.querySelectorAll("#modeSeg button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+
+  $("qSearch").addEventListener("input", renderQuick);
+  $("qSearch").addEventListener("keydown", e => { if (e.key === "Enter") { const first = $("qActions").querySelector(".qact"); const hit = document.querySelector("#quickPane .qadd"); if (hit && norm($("qSearch").value)) hit.click(); else if (first) first.click(); } });
+  function resetForm(){
+    $("qSearch").value = "";
+    $("fName").value = ""; $("fCal").value = ""; $("fProt").value = ""; $("fCarb").value = ""; $("fFat").value = ""; $("fFav").checked = false; setQty(1);
+    $("macroFields").hidden = !state.prefs.macros;
+    $("aiText").value = ""; $("aiErr").hidden = true; $("manErr").hidden = true;
+    $("review").hidden = true; $("rrows").innerHTML = ""; clearPhoto();
+  }
+  function openAdd(meal){
+    state.editing = null; state.meal = meal; resetForm(); renderChips();
+    $("addTitle").textContent = "הוספת פריט"; $("saveItem").textContent = "הוסף ליומן"; $("deleteItem").hidden = true;
+    $("modeSeg").hidden = false;
+    setMode("quick");   // search bar is the universal entry point
+    show("addSheet");
+  }
+  function openEdit(it){
+    state.editing = it.id; state.meal = it.meal || "free"; resetForm(); renderChips();
+    const u = unitOf(it);
+    $("fName").value = it.name; $("fCal").value = Math.round(u.cal); $("fProt").value = r1(u.prot);
+    $("fCarb").value = u.carbs ? r1(u.carbs) : ""; $("fFat").value = u.fat ? r1(u.fat) : "";
+    if (u.carbs || u.fat) $("macroFields").hidden = false;
+    setQty(+it.qty || 1); $("fFav").checked = isFav(it.name);
+    $("addTitle").textContent = "עריכת פריט"; $("saveItem").textContent = "שמור שינויים"; $("deleteItem").hidden = false;
+    $("modeSeg").hidden = true; setMode("manual");
+    show("addSheet");
+  }
+  $("fab").onclick = () => openAdd("free");
+
+  /* ---------- quick list ---------- */
+  function quickRow(it, fav){
+    const li = document.createElement("li");
+    const b = document.createElement("button"); b.className = "qadd";
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = it.name;
+    const pc = document.createElement("span"); pc.className = "pill c"; pc.textContent = fmt(it.cal) + " קק״ל";
+    const pp = document.createElement("span"); pp.className = "pill p"; pp.textContent = fmt1(it.prot) + " ג׳";
+    b.append(nm, pc, pp);
+    b.onclick = () => {
+      addEntry(state.meal, {...it, qty: 1}); persistDay(state.date); render();
+      const k = state.date, added = state.days[k][state.days[k].length - 1];
+      toast("נוסף ל" + mealName(state.meal) + ": " + it.name, "בטל", () => { state.days[k] = (state.days[k] || []).filter(e => e.id !== added.id); persistDay(k); render(); });
+    };
+    const st = document.createElement("button"); st.className = "star" + (fav ? " on" : "");
+    st.setAttribute("aria-label", fav ? "הסר ממועדפים" : "הוסף למועדפים");
+    st.innerHTML = '<svg class="i"><use href="#i-star"/></svg>';
+    st.onclick = () => { toggleFav(it, !fav); renderQuick(); };
+    li.append(b, st); return li;
+  }
+  function renderQuick(){
+    const q = norm($("qSearch").value), ql = q.toLowerCase();
+    const match = x => !q || x.name.toLowerCase().includes(ql);
+    const favs = state.prefs.favs.filter(match), rec = recentItems().filter(match);
+    const A = $("qActions"); A.innerHTML = ""; A.hidden = !q;
+    if (q) {
+      const mk = (icon, title, sub, fn) => { const b = document.createElement("button"); b.className = "qact"; b.innerHTML = `<span class="ico">${icon}</span>`; const t = document.createElement("span"); t.append(title); const sm = document.createElement("small"); sm.textContent = sub; t.append(sm); b.append(t); b.onclick = fn; A.append(b); };
+      if (state.sample) mk('<svg class="i" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>', "הערכה חכמה", `"${q}" — Claude יחשב קלוריות וחלבון`, () => { setMode("ai"); $("aiText").value = q; $("aiGo").click(); });
+      mk('<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', "הזנה ידנית", `"${q}" עם ערכים שאתה יודע`, () => { setMode("manual"); $("fName").value = q; setTimeout(() => $("fCal").focus(), 50); });
+    }
+    $("favList").innerHTML = ""; $("recList").innerHTML = "";
+    favs.forEach(f => $("favList").append(quickRow(f, true)));
+    rec.forEach(r => $("recList").append(quickRow(r, false)));
+    $("favWrap").hidden = !favs.length; $("recWrap").hidden = !rec.length;
+    $("quickEmpty").hidden = !!q || (!!(favs.length || rec.length) && favs.length > 0);
+    $("quickEmpty").textContent = (favs.length || rec.length)
+      ? "לחיצה על פריט מוסיפה אותו מיד. סמן כוכב כדי להצמיד פריט למועדפים."
+      : "עוד אין פריטים. אחרי שתרשום כמה מאכלים הם יופיעו כאן להוספה בלחיצה אחת.";
+  }
+
+  /* ---------- photo ---------- */
+  $("photoBtn").onclick = () => $("photoInput").click();
+  $("photoInput").onchange = () => {
+    const f = $("photoInput").files && $("photoInput").files[0];
+    if (!f) return;
+    if (state.imgLimits && f.size > state.imgLimits.maxInputBytes) { showErr("aiErr", "התמונה גדולה מדי. נסה תמונה אחרת."); return; }
+    state.photo = f;
+    const r = new FileReader();
+    r.onload = () => { $("thumbImg").src = r.result; $("thumb").hidden = false; };
+    r.readAsDataURL(f);
+  };
+  $("thumbX").onclick = clearPhoto;
+  function clearPhoto(){ state.photo = null; $("photoInput").value = ""; $("thumb").hidden = true; $("thumbImg").removeAttribute("src"); }
+
+  /* ---------- AI estimate ---------- */
+  $("aiGo").onclick = async () => {
+    const text = $("aiText").value.trim();
+    $("aiErr").hidden = true;
+    if (!text && !state.photo) { showErr("aiErr", "כתוב מה אכלת או צרף תמונה של הצלחת."); return; }
+    if (!state.sample) { showErr("aiErr", "הערכה אוטומטית לא זמינה כאן. עבור להזנה ידנית."); return; }
+    const btn = $("aiGo"); btn.disabled = true;
+    $("aiGoLabel").textContent = "מעריך…"; btn.insertAdjacentHTML("afterbegin", '<span class="spin" id="spin"></span>');
+    const prompt =
+`You are a nutrition estimation engine for an Israeli user.
+${state.photo ? "The attached image is a photo of food the user ate. Identify each food and estimate portion sizes from the photo." : ""}
+${text ? `The user's description (Hebrew): """${text.slice(0, 500)}"""` : ""}
+${state.photo && text ? "Use the description to correct or complete what you see in the photo." : ""}
+Split the meal into its separate components (e.g. "pita with shakshuka and 2 tbsp tahini" -> pita, shakshuka, tahini). Where amounts are not given assume typical Israeli portions (pita ~75g, 1 tbsp raw tahini ~15g, slice of bread ~30g, egg ~50g, cottage 5% container 250g).
+Return ONLY a JSON object, no prose, no markdown:
+{"items":[{"name":"<short Hebrew name incl. amount, max 40 chars>","calories":<integer kcal>,"protein":<grams, max 1 decimal>,"carbs":<grams>,"fat":<grams>}]}
+Maximum 8 items. If no food is described or visible, return {"items":[]}.`;
+    try {
+      const opts = {modelTier: state.photo ? "default" : "quick"};
+      if (state.photo) opts.images = state.photo;
+      const res = await state.sample.json(prompt, opts);
+      const items = (res && Array.isArray(res.items) ? res.items : [])
+        .map(x => ({name: norm(x && x.name).slice(0, 60), cal: Math.round(Number(x && x.calories)), prot: r1(Number(x && x.protein)), carbs: r1(Number(x && x.carbs) || 0), fat: r1(Number(x && x.fat) || 0)}))
+        .filter(x => x.name && isFinite(x.cal) && isFinite(x.prot) && x.cal >= 0 && x.prot >= 0);
+      if (!items.length) showErr("aiErr", "לא זיהיתי מאכל. נסה לפרט יותר, או הזן ידנית.");
+      else showReview(items);
+    } catch(e) {
+      const c = e && e.code;
+      const msg = c === "not_granted" ? "ההערכה החכמה לא מוגדרת. אפשר להזין ידנית."
+        : c === "rate_limited" ? "יותר מדי בקשות ברצף. נסה שוב בעוד דקה."
+        : c === "image_rejected" ? "לא הצלחתי לקרוא את התמונה. נסה תמונה אחרת (JPG או PNG)."
+        : c === "images_unavailable" ? "ניתוח תמונות לא זמין כאן. תאר את הארוחה במילים."
+        : c === "cancelled" ? "" : "ההערכה נכשלה. נסה שוב או הזן ידנית.";
+      if (msg) showErr("aiErr", msg);
+    } finally {
+      btn.disabled = !state.sample; $("aiGoLabel").textContent = "הערך קלוריות וחלבון";
+      const s = $("spin"); if (s) s.remove();
+    }
+  };
+  function showReview(items){
+    const box = $("rrows"); box.innerHTML = "";
+    items.forEach(it => {
+      const row = document.createElement("div"); row.className = "rrow";
+      row.dataset.carbs = it.carbs || 0; row.dataset.fat = it.fat || 0;
+      const n = document.createElement("input"); n.type = "text"; n.value = it.name; n.setAttribute("aria-label", "שם הפריט");
+      const c = document.createElement("input"); c.type = "number"; c.inputMode = "numeric"; c.min = "0"; c.value = it.cal; c.setAttribute("aria-label", "קלוריות");
+      const p = document.createElement("input"); p.type = "number"; p.inputMode = "decimal"; p.min = "0"; p.step = "0.1"; p.value = it.prot; p.setAttribute("aria-label", "חלבון בגרם");
+      const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "הסר שורה"); x.innerHTML = '<svg class="i"><use href="#i-x"/></svg>';
+      x.onclick = () => { row.remove(); updateReviewTotal(); };
+      [c, p].forEach(i => i.oninput = updateReviewTotal);
+      row.append(n, c, p, x); box.append(row);
+    });
+    $("review").hidden = false; updateReviewTotal();
+    $("review").scrollIntoView({behavior: "smooth", block: "nearest"});
+  }
+  function reviewItems(){
+    return [...$("rrows").children].map(r => { const [n,c,p] = r.querySelectorAll("input"); return {name: norm(n.value), cal: +c.value || 0, prot: +p.value || 0, carbs: +r.dataset.carbs || 0, fat: +r.dataset.fat || 0, qty: 1}; }).filter(i => i.name);
+  }
+  function updateReviewTotal(){
+    const its = reviewItems(), t = its.reduce((a,i) => ({c: a.c + i.cal, p: a.p + i.prot}), {c:0, p:0});
+    $("rtotal").textContent = `${fmt(t.c)} קק״ל · ${fmt1(t.p)} ג׳ חלבון`;
+    $("addReviewed").textContent = its.length > 1 ? `הוסף ${its.length} פריטים ליומן` : "הוסף ליומן";
+    $("addReviewed").disabled = !its.length;
+  }
+  $("addReviewed").onclick = async () => {
+    const its = reviewItems(); if (!its.length) return;
+    const v = await confirmValues(its);
+    if (v.error) { showErr("aiErr", v.error); return; }
+    if (v.cancel) return;
+    its.forEach(i => addEntry(state.meal, i));
+    persistDay(state.date); hideAll(); render();
+    toast(its.length > 1 ? `${its.length} פריטים נוספו ל${mealName(state.meal)}` : "נוסף ליומן");
+  };
+  function showErr(id, msg){ const el = $(id); el.textContent = msg; el.hidden = false; }
+
+  /* ---------- manual save / delete ---------- */
+  let qty = 1;
+  function setQty(v){ qty = Math.min(20, Math.max(0.25, Math.round(v * 4) / 4)); $("qVal").textContent = "×" + fmt1(qty); updateTotalPreview(); }
+  $("qMinus").onclick = () => setQty(qty <= 1 ? qty - 0.25 : qty - 0.5);
+  $("qPlus").onclick = () => setQty(qty < 1 ? qty + 0.25 : qty + 0.5);
+  function updateTotalPreview(){
+    const c = (+$("fCal").value || 0) * qty, p = (+$("fProt").value || 0) * qty;
+    $("qTotal").textContent = qty === 1 ? "" : `סה״כ: ${fmt(c)} קק״ל · ${fmt1(p)} ג׳ חלבון`;
+  }
+  ["fCal","fProt"].forEach(id => $(id).addEventListener("input", updateTotalPreview));
+  ["fName","fCal","fProt","fCarb","fFat"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("saveItem").click(); } }));
+
+  $("saveItem").onclick = async () => {
+    const name = norm($("fName").value), cal = Number($("fCal").value), prot = Number($("fProt").value || 0);
+    const carbs = Number($("fCarb").value || 0), fat = Number($("fFat").value || 0);
+    $("manErr").hidden = true;
+    if (!name) return showErr("manErr", "חסר שם למאכל.");
+    if ($("fCal").value === "" || !isFinite(cal) || cal < 0) return showErr("manErr", "הזן מספר קלוריות (0 ומעלה).");
+    if (!isFinite(prot) || prot < 0) return showErr("manErr", "כמות החלבון צריכה להיות 0 ומעלה.");
+    if (!isFinite(carbs) || carbs < 0 || !isFinite(fat) || fat < 0) return showErr("manErr", "פחמימות ושומן צריכים להיות 0 ומעלה.");
+    const u = {name, cal: Math.round(cal), prot: r1(prot), carbs: r1(carbs), fat: r1(fat), qty};
+    const v = await confirmValues([u]);
+    if (v.error) return showErr("manErr", v.error);
+    if (v.cancel) return;
+    const k = state.date, editing = state.editing;
+    if (editing) {
+      const list = (state.days[k] || []).map(e => ({...e}));
+      const i = list.findIndex(e => e.id === editing);
+      if (i > -1) list[i] = buildEntry(u, qty, state.meal, {id: list[i].id, ts: list[i].ts});
+      state.days[k] = list;
+    } else addEntry(state.meal, u);
+    const favU = {name, cal: u.cal, prot: u.prot, carbs: u.carbs, fat: u.fat};
+    if ($("fFav").checked !== isFav(name)) toggleFav(favU, $("fFav").checked);
+    else if ($("fFav").checked) toggleFav(favU, true);
+    persistDay(k); hideAll(); render();
+    toast(editing ? "הפריט עודכן" : "נוסף ליומן");
+  };
+  $("deleteItem").onclick = () => {
+    const k = state.date, list = state.days[k] || [], idx = list.findIndex(e => e.id === state.editing);
+    if (idx < 0) return;
+    const removed = list[idx];
+    state.days[k] = list.filter(e => e.id !== removed.id);
+    persistDay(k); hideAll(); render();
+    toast("נמחק: " + removed.name, "בטל", () => {
+      const cur = (state.days[k] || []).slice(); cur.splice(Math.min(idx, cur.length), 0, removed);
+      state.days[k] = cur; persistDay(k); render(); toast("הפריט שוחזר");
+    });
+  };
+
+  /* ---------- settings ---------- */
+  $("openSettings").onclick = () => {
+    $("sCal").value = state.prefs.cal; $("sProt").value = state.prefs.prot; $("setErr").hidden = true;
+    $("sDayEnd").value = String(state.prefs.dayEnd || 0); $("sMacros").checked = !!state.prefs.macros;
+    $("setTitle").textContent = "הגדרות של " + activeProfile().name;
+    show("setSheet");
+  };
+  $("sDayEnd").onchange = () => {
+    const wasToday = state.date === todayKey();
+    state.prefs.dayEnd = +$("sDayEnd").value || 0; persistPrefs();
+    if (wasToday) state.date = todayKey();
+    render(); toast(state.prefs.dayEnd ? `היום מתחלף ב-${pad(state.prefs.dayEnd)}:00` : "היום מתחלף בחצות");
+  };
+  $("sMacros").onchange = () => { state.prefs.macros = $("sMacros").checked; persistPrefs(); render(); };
+  $("saveTargets").onclick = () => {
+    const c = Math.round(+$("sCal").value), p = Math.round(+$("sProt").value);
+    if (!(c >= 500 && c <= 6000)) return showErr("setErr", "יעד הקלוריות צריך להיות בין 500 ל-6,000.");
+    if (!(p >= 10 && p <= 400)) return showErr("setErr", "יעד החלבון צריך להיות בין 10 ל-400 גרם.");
+    $("setErr").hidden = true;
+    const tk = todayKey();
+    // lock earlier logged days to the targets they had, then apply new ones from today
+    Object.keys(state.days).forEach(k => { if (k < tk && !state.dayT[k] && (state.days[k]||[]).length) state.dayT[k] = cur(); });
+    state.prefs.cal = c; state.prefs.prot = p;
+    state.dayT[tk] = {cal: c, prot: p};
+    persistPrefs(); if ((state.days[tk] || []).length) persistDay(tk); else saveLocal();
+    render(); hideAll(); toast("היעדים עודכנו");
+  };
+  $("clearDay").onclick = async () => {
+    const k = state.date, prev = (state.days[k] || []).slice();
+    if (!prev.length) { toast("אין רשומות ביום הזה"); return; }
+    if (!await ask("מחיקת היום", `למחוק את כל ${prev.length} הרשומות של היום המוצג?`, "מחק הכל", true)) return;
+    state.days[k] = []; persistDay(k); hideAll(); render();
+    toast("הרשומות נמחקו", "בטל", () => { state.days[k] = prev; persistDay(k); render(); toast("הרשומות שוחזרו"); });
+  };
+  $("exportCsv").onclick = async () => {
+    if (!state.downloads) return;
+    const esc = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const rows = [["תאריך","ארוחה","פריט","כמות","קלוריות","חלבון (ג׳)","פחמימות (ג׳)","שומן (ג׳)","יעד קלוריות","יעד חלבון"]];
+    Object.keys(state.days).sort().forEach(k => {
+      const T = tOf(k);
+      (state.days[k] || []).forEach(e => rows.push([k, mealName(e.meal || "free"), e.name, +e.qty || 1, e.cal, e.prot, +e.carbs || 0, +e.fat || 0, T.cal, T.prot]));
+    });
+    if (rows.length === 1) { toast("אין עדיין נתונים לייצוא"); return; }
+    const csv = "\uFEFF" + rows.map(r => r.map(esc).join(",")).join("\r\n");
+    try { await state.downloads.save({filename: `calories-${todayKey()}.csv`, data: new Blob([csv], {type: "text/csv;charset=utf-8"})}); }
+    catch(e) { if (e && e.code !== "cancelled" && e.code !== "declined") toast("הייצוא נכשל. נסה שוב."); }
+  };
+
+  /* ---------- trends ---------- */
+  $("openTrends").onclick = () => { renderTrends(); show("trendSheet"); };
+  document.querySelectorAll("#rangeSeg button").forEach(b => b.onclick = () => {
+    state.range = +b.dataset.r;
+    document.querySelectorAll("#rangeSeg button").forEach(x => x.classList.toggle("on", x === b));
+    renderTrends();
+  });
+  function barChart(vals, opts){
+    const W = 340, H = 130, padT = 8, padB = 18, n = vals.length, slot = W / n, bw = Math.max(1.5, slot * 0.7);
+    const max = Math.max(opts.target * 1.25, ...vals.map(v => v.v)) || 1;
+    const y = v => padT + (H - padT - padB) * (1 - v / max);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label}">`;
+    vals.forEach((v, i) => {
+      const x = W - (i + 1) * slot + (slot - bw) / 2;   // oldest on the right (RTL)
+      const top = v.has ? y(v.v) : H - padB - 2;
+      const h = v.has ? Math.max(2, H - padB - top) : 2;
+      svg += `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(3, bw/2).toFixed(1)}" fill="${v.has ? opts.color(v) : "var(--line)"}"/>`;
+    });
+    const ty = y(opts.target).toFixed(1);
+    svg += `<line x1="0" x2="${W}" y1="${ty}" y2="${ty}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1"/>`;
+    const first = vals[0], last = vals[vals.length - 1];
+    const lab = k => parseKey(k).toLocaleDateString("he-IL", {day: "numeric", month: "numeric"});
+    svg += `<text x="${W - 2}" y="${H - 4}" font-size="10" fill="var(--muted)" text-anchor="end">${lab(first.k)}</text>`;
+    svg += `<text x="2" y="${H - 4}" font-size="10" fill="var(--muted)" text-anchor="start">${lab(last.k)}</text>`;
+    return svg + "</svg>";
+  }
+  function renderTrends(){
+    const n = state.range, end = todayKey(), days = [];
+    for (let i = n - 1; i >= 0; i--) { const k = addDays(end, -i); days.push({k, ...dayStatus(k)}); }
+    const logged = days.filter(d => d.has);
+    const avgC = logged.length ? logged.reduce((a,d) => a + d.t.cal, 0) / logged.length : 0;
+    const avgP = logged.length ? logged.reduce((a,d) => a + d.t.prot, 0) / logged.length : 0;
+    const both = logged.filter(d => d.calOk && d.protOk).length;
+    let streak = 0;
+    for (let i = days.length - 1; i >= 0; i--) {
+      const d = days[i];
+      if (d.k === end && !(d.calOk && d.protOk)) continue; // today still in progress
+      if (d.calOk && d.protOk) streak++; else break;
+    }
+    const body = $("trendBody"); body.innerHTML = "";
+    if (!logged.length) { body.innerHTML = '<p class="note">אין עדיין נתונים בטווח הזה. רשום כמה ימים והמגמות יופיעו כאן.</p>'; return; }
+    const T = cur();
+    body.innerHTML = `
+      <div class="tstats">
+        <div><b>${fmt(avgC)}</b><span>ממוצע קלוריות ליום</span></div>
+        <div><b>${fmt1(avgP)}</b><span>ממוצע חלבון ליום (ג׳)</span></div>
+        <div><b>${both}/${logged.length}</b><span>ימים ביעד מתוך ימים שנרשמו</span></div>
+        <div><b>${streak}</b><span>${streak === 1 ? "יום ברצף ביעד" : "ימים ברצף ביעד"}</span></div>
+      </div>
+      <div class="chart"><h5>קלוריות <small>קו מקווקו: יעד ${fmt(T.cal)}</small></h5>
+        ${barChart(days.map(d => ({k: d.k, has: d.has, v: d.t.cal, d})), {target: T.cal, label: "קלוריות יומיות", color: v => v.d.t.cal > v.d.T.cal ? "var(--over)" : "var(--cal)"})}</div>
+      <div class="chart"><h5>חלבון <small>קו מקווקו: יעד ${fmt(T.prot)} ג׳</small></h5>
+        ${barChart(days.map(d => ({k: d.k, has: d.has, v: d.t.prot, d})), {target: T.prot, label: "חלבון יומי", color: v => v.d.protOk ? "var(--good)" : "var(--prot)"})}</div>
+      <p class="note">ממוצעים מחושבים רק על ימים שרשמת בהם משהו (${logged.length} מתוך ${n}).</p>`;
+  }
+
+  /* ---------- wrap up ---------- */
+  $("wrapBtn").onclick = () => {
+    const s = dayStatus(state.date), t = s.t, T = s.T;
+    const calPct = Math.round(t.cal / T.cal * 100), protPct = Math.round(t.prot / T.prot * 100);
+    const body = $("wrapBody"); body.innerHTML = "";
+    const em = document.createElement("div"); em.className = "emoji";
+    const h = document.createElement("h4"); const p = document.createElement("p");
+    if (!s.has) {
+      em.textContent = "📝"; h.textContent = "עוד לא נרשם כלום"; p.textContent = "הוסף את מה שאכלת היום ואז סגור את היום.";
+    } else if (s.calOk && s.protOk) {
+      em.textContent = "🏆"; h.textContent = "כל הכבוד!"; p.textContent = "עמדת ביעד הקלוריות והגעת למטרת החלבון!";
+      celebrate();
+    } else {
+      em.textContent = "💪"; h.textContent = "סיכום היום";
+      const parts = [];
+      parts.push(s.calOk ? `קלוריות: ${calPct}% מהיעד — בתוך המסגרת.` : `קלוריות: ${calPct}% מהיעד — חריגה של ${fmt(t.cal - T.cal)}.`);
+      parts.push(s.protOk ? `חלבון: ${protPct}% — הגעת ליעד.` : `חלבון: ${protPct}% — חסרו ${fmt1(T.prot - t.prot)} גרם.`);
+      parts.push(s.calOk || s.protOk ? "חצי מהדרך כבר שם. מחר משלימים את השאר." : "יום אחד לא קובע. מחר מתחילים מחדש.");
+      p.textContent = parts.join(" ");
+    }
+    body.append(em, h, p);
+    if (s.has) {
+      const st = document.createElement("div"); st.className = "stats";
+      st.innerHTML = `<div><b style="color:${s.calOk?'var(--cal)':'var(--over)'}">${fmt(t.cal)}</b><span>מתוך ${fmt(T.cal)} קלוריות</span></div><div><b style="color:${s.protOk?'var(--good)':'var(--prot)'}">${fmt1(t.prot)}</b><span>מתוך ${fmt(T.prot)} גרם חלבון</span></div>`;
+      body.append(st);
+    }
+    show("wrapSheet");
+  };
+  function celebrate(){
+    if (typeof confetti !== "function" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const colors = ["#0d9488","#4f46e5","#16a34a","#f59e0b"];
+    confetti({particleCount: 120, spread: 80, origin: {y: .7}, colors, zIndex: 100});
+    setTimeout(() => confetti({particleCount: 80, angle: 60, spread: 60, origin: {x: 0, y: .75}, colors, zIndex: 100}), 250);
+    setTimeout(() => confetti({particleCount: 80, angle: 120, spread: 60, origin: {x: 1, y: .75}, colors, zIndex: 100}), 400);
+  }
+
+  /* ---------- CSV import (migration from the Claude version) ---------- */
+  function parseCSV(text){
+    text = text.replace(/^\uFEFF/, "");
+    const rows = []; let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i+1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i+1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(r => r.some(x => x.trim()));
+  }
+  $("importCsv").onclick = () => $("importFile").click();
+  $("importFile").onchange = async () => {
+    const file = $("importFile").files[0]; $("importFile").value = "";
+    if (!file) return;
+    const rows = parseCSV(await file.text());
+    const head = rows.shift() || [];
+    const col = name => head.findIndex(h => h.trim().startsWith(name));
+    const iD = col("תאריך"), iM = col("ארוחה"), iN = col("פריט"), iQ = col("כמות"), iC = col("קלוריות"), iP = col("חלבון"), iCa = col("פחמימות"), iF = col("שומן"), iTC = col("יעד קלוריות"), iTP = col("יעד חלבון");
+    if (iD < 0 || iN < 0 || iC < 0) { toast("הקובץ לא בפורמט של המחשבון"); return; }
+    const byName = {}; state.prefs.meals.forEach(m => byName[m.name] = m.id);
+    let added = 0, skipped = 0; const touched = new Set();
+    rows.forEach(r => {
+      const k = (r[iD] || "").trim(); if (!DATE_RE.test(k)) return;
+      const qty = +(r[iQ] || 1) || 1, cal = +r[iC] || 0, prot = +(r[iP] || 0) || 0;
+      const u = {name: r[iN], cal: cal / qty, prot: prot / qty, carbs: (+(r[iCa] || 0) || 0) / qty, fat: (+(r[iF] || 0) || 0) / qty};
+      const meal = byName[(r[iM] || "").trim()] || "free";
+      const list = state.days[k] || [];
+      if (list.some(e => e.name === norm(u.name) && Math.round(e.cal) === Math.round(cal) && e.meal === meal)) { skipped++; return; }
+      const e = buildEntry(u, qty, meal); e.ts = Date.parse(k) || Date.now();
+      state.days[k] = [...list, e]; added++; touched.add(k);
+      if (!state.dayT[k] && iTC >= 0 && +r[iTC]) state.dayT[k] = {cal: +r[iTC], prot: +r[iTP] || state.prefs.prot};
+    });
+    touched.forEach(k => persistDay(k)); saveLocal(); render();
+    toast(`יובאו ${added} פריטים` + (skipped ? ` · ${skipped} כפולים דולגו` : ""));
+  };
+
+  /* ---------- month calendar ---------- */
+  let calCursor = null;
+  function openCal(){ const d = parseKey(state.date); calCursor = new Date(d.getFullYear(), d.getMonth(), 1); renderCal(); show("calSheet"); }
+  function renderCal(){
+    const y = calCursor.getFullYear(), mo = calCursor.getMonth(), tk = todayKey();
+    $("calMonth").textContent = calCursor.toLocaleDateString("he-IL", {month: "long", year: "numeric"});
+    $("calNext").disabled = keyOf(new Date(y, mo + 1, 1)) > tk;
+    const g = $("calGrid"); g.innerHTML = "";
+    HE_DAYS.forEach(d => { const e = document.createElement("div"); e.className = "dow"; e.textContent = d; g.append(e); });
+    const first = new Date(y, mo, 1).getDay(), n = new Date(y, mo + 1, 0).getDate();
+    for (let i = 0; i < first; i++) g.append(document.createElement("div"));
+    let logged = 0, both = 0;
+    for (let d = 1; d <= n; d++) {
+      const k = keyOf(new Date(y, mo, d)), s = dayStatus(k);
+      const b = document.createElement("button"); b.className = "cday";
+      if (s.has) { logged++; if (s.calOk && s.protOk) { both++; b.classList.add("both"); } else if (s.calOk || s.protOk) b.classList.add("part"); else b.classList.add("none"); }
+      if (k === state.date) b.classList.add("sel"); if (k === tk) b.classList.add("today");
+      b.disabled = k > tk; b.textContent = d; b.append(document.createElement("i"));
+      b.setAttribute("aria-label", parseKey(k).toLocaleDateString("he-IL", {day: "numeric", month: "long"}) + (s.has ? `: ${fmt(s.t.cal)} קלוריות` : ""));
+      b.onclick = () => { state.date = k; hideAll(); render(); };
+      g.append(b);
+    }
+    $("calSummary").textContent = logged ? `החודש: ${both} ימים ביעד מתוך ${logged} ימים שנרשמו.` : "אין רשומות בחודש הזה.";
+  }
+  $("calPrev").onclick = () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() - 1, 1); renderCal(); };
+  $("calNext").onclick = () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + 1, 1); renderCal(); };
+  $("dateLabel").onclick = openCal;
+  $("dateLabel").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCal(); } };
+
+  /* ---------- goal calculator ---------- */
+  const calc = {sex: "m", goal: "cut"};
+  function segPick(id, key){ document.querySelectorAll("#" + id + " button").forEach(b => b.onclick = () => { calc[key] = b.dataset.v; document.querySelectorAll("#" + id + " button").forEach(x => x.classList.toggle("on", x === b)); calcRun(); }); }
+  segPick("cSex", "sex"); segPick("cGoal", "goal");
+  ["cAge","cHeight","cWeight","cAct"].forEach(id => $(id).addEventListener("input", calcRun));
+  let calcOut = null;
+  function calcRun(){
+    const age = +$("cAge").value, h = +$("cHeight").value, w = +$("cWeight").value, act = +$("cAct").value;
+    const R = $("calcRes");
+    if (!(age >= 16 && age <= 90 && h >= 130 && h <= 220 && w >= 35 && w <= 250)) { calcOut = null; R.innerHTML = '<div style="grid-column:1/-1"><span>מלא גיל, גובה ומשקל כדי לקבל המלצה.</span></div>'; $("applyCalc").disabled = true; return; }
+    const bmr = 10 * w + 6.25 * h - 5 * age + (calc.sex === "m" ? 5 : -161), tdee = bmr * act;
+    let kcal = calc.goal === "cut" ? tdee - Math.min(500, tdee * .2) : calc.goal === "gain" ? tdee * 1.1 : tdee;
+    kcal = Math.max(kcal, calc.sex === "m" ? 1500 : 1200);
+    kcal = Math.round(kcal / 50) * 50;
+    const prot = Math.round(w * (calc.goal === "cut" ? 2 : calc.goal === "gain" ? 1.8 : 1.6) / 5) * 5;
+    calcOut = {kcal, prot};
+    R.innerHTML = `<div><b>${fmt(kcal)}</b><span>קלוריות ליום · שמירה ${fmt(tdee)}</span></div><div><b>${fmt(prot)}</b><span>גרם חלבון ליום</span></div>`;
+    $("applyCalc").disabled = false;
+    state.prefs.body = {sex: calc.sex, goal: calc.goal, age, h, w, act};
+  }
+  $("openCalc").onclick = () => {
+    const b = state.prefs.body || {};
+    calc.sex = b.sex || "m"; calc.goal = b.goal || "cut";
+    $("cAge").value = b.age || ""; $("cHeight").value = b.h || ""; $("cWeight").value = b.w || ""; $("cAct").value = String(b.act || 1.375);
+    document.querySelectorAll("#cSex button").forEach(x => x.classList.toggle("on", x.dataset.v === calc.sex));
+    document.querySelectorAll("#cGoal button").forEach(x => x.classList.toggle("on", x.dataset.v === calc.goal));
+    calcRun(); show("calcSheet");
+  };
+  $("applyCalc").onclick = () => {
+    if (!calcOut) return;
+    $("sCal").value = calcOut.kcal; $("sProt").value = calcOut.prot;
+    $("saveTargets").click();
+  };
+
+  /* ---------- meals manager (per user) ---------- */
+  let newMealIcon = "coffee", editMealId = null;
+  function openMealsSheet(){ editMealId = null; $("newMeal").value = ""; renderMealsSheet(); show("mealsSheet"); }
+  function saveMeals(){ persistPrefs(); render(); renderMealsSheet(); }
+  function renderMealsSheet(){
+    $("mealsTitle").textContent = "הארוחות של " + activeProfile().name;
+    const ul = $("mealRows"); ul.innerHTML = "";
+    const ms = state.prefs.meals;
+    ms.forEach((m, i) => {
+      const li = document.createElement("li"); li.className = "prow";
+      if (editMealId === m.id) {
+        const inp = document.createElement("input"); inp.type = "text"; inp.value = m.name; inp.maxLength = 24; inp.setAttribute("aria-label", "שם חדש לארוחה");
+        const ok = document.createElement("button"); ok.className = "pbtn ok"; ok.setAttribute("aria-label", "שמור");
+        ok.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+        const save = () => { const n = norm(inp.value); if (!n) return inp.focus(); m.name = n; delete m.short; editMealId = null; saveMeals(); };
+        ok.onclick = save; inp.onkeydown = e => { if (e.key === "Enter") save(); if (e.key === "Escape") { editMealId = null; renderMealsSheet(); } };
+        li.append(mealIcon(m), inp, ok); ul.append(li); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+        return;
+      }
+      const nm = document.createElement("span"); nm.className = "pn mname"; nm.textContent = m.name;
+      const up = document.createElement("button"); up.className = "pbtn"; up.disabled = i === 0; up.setAttribute("aria-label", "הזז למעלה");
+      up.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>';
+      up.onclick = () => { [ms[i-1], ms[i]] = [ms[i], ms[i-1]]; saveMeals(); };
+      const dn = document.createElement("button"); dn.className = "pbtn"; dn.disabled = i === ms.length - 1; dn.setAttribute("aria-label", "הזז למטה");
+      dn.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+      dn.onclick = () => { [ms[i+1], ms[i]] = [ms[i], ms[i+1]]; saveMeals(); };
+      const ed = document.createElement("button"); ed.className = "pbtn"; ed.setAttribute("aria-label", "שינוי שם " + m.name);
+      ed.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+      ed.onclick = () => { editMealId = m.id; renderMealsSheet(); };
+      const del = document.createElement("button"); del.className = "pbtn del"; del.disabled = ms.length < 2; del.setAttribute("aria-label", "מחיקת " + m.name);
+      del.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+      del.onclick = async () => {
+        if (!await ask("מחיקת ארוחה", `למחוק את "${m.name}"? פריטים שכבר נרשמו אליה יוצגו תחת "פריטים חופשיים".`, "מחק", true)) return;
+        state.prefs.meals = ms.filter(x => x.id !== m.id); saveMeals(); toast("הארוחה נמחקה");
+      };
+      li.append(mealIcon(m), nm, up, dn, ed, del); ul.append(li);
+    });
+    const ip = $("iconPick"); ip.innerHTML = "";
+    Object.keys(ICONS).filter(k => k !== "zap").forEach(k => {
+      const b = document.createElement("button"); b.className = "ipick" + (k === newMealIcon ? " on" : "");
+      b.setAttribute("aria-label", "סמל " + k);
+      const ic = mealIcon({icon: k}); b.append(ic);
+      b.onclick = () => { newMealIcon = k; renderMealsSheet(); };
+      ip.append(b);
+    });
+    $("addMeal").disabled = ms.length >= 10;
+  }
+  $("addMeal").onclick = () => {
+    const n = norm($("newMeal").value);
+    if (!n) { $("newMeal").focus(); return; }
+    if (state.prefs.meals.length >= 10) { toast("אפשר עד 10 ארוחות"); return; }
+    if (state.prefs.meals.some(m => m.name === n)) { toast("כבר יש ארוחה בשם הזה"); return; }
+    state.prefs.meals.push({id: "m" + uid(), name: n.slice(0, 24), icon: newMealIcon});
+    $("newMeal").value = ""; saveMeals(); toast("נוספה ארוחה: " + n);
+  };
+  $("newMeal").onkeydown = e => { if (e.key === "Enter") $("addMeal").click(); };
+  $("openMeals").onclick = openMealsSheet;
+
+  /* ---------- theme (per user) ---------- */
+  const ACCENTS = ["#0d9488","#0284c7","#4f46e5","#7c3aed","#db2777","#e11d48","#ea580c","#16a34a","#334155"];
+  const PROT_COLORS = ["#4f46e5","#0891b2","#9333ea","#c026d3","#d97706","#0f766e","#be123c","#2563eb"];
+  const BGS = {
+    slate:    {name: "קלאסי", l: ["#f8fafc","#ffffff"], d: ["#0b1220","#131c2e"]},
+    paper:    {name: "ניגודיות",   l: ["#ffffff","#ffffff"], d: ["#000000","#141414"]},
+    warm:     {name: "חם",        l: ["#faf6f0","#ffffff"], d: ["#17130f","#221c16"]},
+    mint:     {name: "מנטה",      l: ["#effcf7","#ffffff"], d: ["#06161a","#0e2226"]},
+    sky:      {name: "שמיים",     l: ["#eef6ff","#ffffff"], d: ["#0a1424","#122036"]},
+    lavender: {name: "לבנדר",     l: ["#f5f3ff","#ffffff"], d: ["#110f1f","#1b1830"]},
+    blush:    {name: "ורוד",      l: ["#fff4f6","#ffffff"], d: ["#1a0f13","#26161c"]}
+  };
+  const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
+  const isDark = () => { const m = state.prefs.theme.mode; return m === "dark" || (m === "auto" && mq && mq.matches); };
+  function lum(hex){
+    const h = hex.replace("#",""); if (h.length < 6) return 0;
+    const c = [0,2,4].map(i => parseInt(h.slice(i, i+2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4));
+    return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+  }
+  function applyTheme(){
+    const th = state.prefs.theme, root = document.documentElement, dark = isDark();
+    root.setAttribute("data-theme", dark ? "dark" : "light");
+    const bg = BGS[th.bg] || BGS.slate, pair = dark ? bg.d : bg.l;
+    root.style.setProperty("--bg", pair[0]); root.style.setProperty("--card", pair[1]);
+    if (th.accent) root.style.setProperty("--cal", th.accent); else root.style.removeProperty("--cal");
+    if (th.protColor) root.style.setProperty("--prot", th.protColor); else root.style.removeProperty("--prot");
+    const acc = getComputedStyle(root).getPropertyValue("--cal").trim() || "#0d9488";
+    root.style.setProperty("--on-accent", lum(acc) > .42 ? "#0f172a" : "#ffffff");
+    const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", pair[0]);
+  }
+  if (mq && mq.addEventListener) mq.addEventListener("change", () => { applyTheme(); if (openSheet && openSheet.id === "themeSheet") renderThemeSheet(); });
+  function setTheme(patch){ state.prefs.theme = {...state.prefs.theme, ...patch}; applyTheme(); renderThemeSheet(); persistPrefs(); }
+  function swatchRow(boxId, colors, current, key, defLabel){
+    const box = $(boxId); box.innerHTML = "";
+    const d = document.createElement("button"); d.className = "sw def" + (!current ? " on" : ""); d.textContent = "רגיל";
+    d.setAttribute("aria-label", defLabel); d.onclick = () => setTheme({[key]: null}); box.append(d);
+    colors.forEach(c => {
+      const b = document.createElement("button"); b.className = "sw" + (current === c ? " on" : ""); b.style.background = c;
+      b.setAttribute("aria-label", "צבע " + c); b.onclick = () => setTheme({[key]: c}); box.append(b);
+    });
+    const pick = document.createElement("label"); pick.className = "sw pick" + (current && !colors.includes(current) ? " on" : "");
+    pick.title = "צבע מותאם"; if (current && !colors.includes(current)) pick.style.background = current;
+    pick.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+    const inp = document.createElement("input"); inp.type = "color"; inp.value = current || colors[0]; inp.setAttribute("aria-label", "בחירת צבע מותאם");
+    inp.oninput = () => { state.prefs.theme[key] = inp.value; applyTheme(); };
+    inp.onchange = () => setTheme({[key]: inp.value});
+    pick.append(inp); box.append(pick);
+  }
+  function renderThemeSheet(){
+    const th = state.prefs.theme;
+    $("themeTitle").textContent = "העיצוב של " + activeProfile().name;
+    document.querySelectorAll("#modeSegT button").forEach(b => b.classList.toggle("on", b.dataset.m === th.mode));
+    const bb = $("bgSw"); bb.innerHTML = "";
+    const dark = isDark();
+    Object.entries(BGS).forEach(([id, bg]) => {
+      const b = document.createElement("button"); b.className = "bgsw" + (th.bg === id ? " on" : "");
+      const pair = dark ? bg.d : bg.l;
+      b.style.background = pair[0];
+      b.innerHTML = `<span style="background:${pair[1]}"></span>`;
+      const l = document.createElement("small"); l.textContent = bg.name;
+      const w = document.createElement("div"); w.className = "bgwrap"; b.onclick = () => setTheme({bg: id});
+      b.setAttribute("aria-label", "רקע " + bg.name);
+      w.append(b, l); bb.append(w);
+    });
+    swatchRow("accSw", ACCENTS, th.accent, "accent", "צבע ראשי רגיל");
+    swatchRow("protSw", PROT_COLORS, th.protColor, "protColor", "צבע חלבון רגיל");
+  }
+  document.querySelectorAll("#modeSegT button").forEach(b => b.onclick = () => setTheme({mode: b.dataset.m}));
+  $("openTheme").onclick = () => { renderThemeSheet(); show("themeSheet"); };
+  $("resetTheme").onclick = () => { setTheme(defPrefs().theme); toast("העיצוב אופס"); };
+
+  /* ---------- nav ---------- */
+  $("prevDay").onclick = () => { state.date = addDays(state.date, -1); render(); };
+  $("nextDay").onclick = () => { if (state.date < todayKey()) { state.date = addDays(state.date, 1); render(); } };
+  $("todayBtn").onclick = () => { state.date = todayKey(); render(); };
+
+  let toastT;
+  function toast(msg, actionLabel, action){
+    const t = $("toast"); t.innerHTML = "";
+    const m = document.createElement("span"); m.textContent = msg; t.append(m);
+    if (actionLabel) {
+      const b = document.createElement("button"); b.textContent = actionLabel;
+      b.onclick = () => { clearTimeout(toastT); t.classList.remove("on", "act"); action(); };
+      t.append(b); t.classList.add("act");
+    } else t.classList.remove("act");
+    t.classList.add("on"); clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove("on", "act"), actionLabel ? 5000 : 1800);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+
+  loadProfilesLocal(); loadLocal(); applyTheme(); state.date = todayKey(); renderChip(); setStatus(); render(); initCloud();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>

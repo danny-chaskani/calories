@@ -1,0 +1,71 @@
+# מעקב קלוריות וחלבון — גרסת אפליקציה (PWA)
+
+אותה אפליקציה שבנינו ב-Claude, ארוזה כאפליקציה עצמאית שנפתחת במסך מלא מהמסך הבית, עובדת גם בלי אינטרנט, ולא תלויה ב-Claude.
+
+## מה יש בתיקייה
+
+| קובץ | מה הוא עושה |
+|---|---|
+| `index.html` | האפליקציה עצמה (אותו קוד, + ייבוא CSV) |
+| `config.js` | **הקובץ היחיד שצריך לערוך** — כתובת ה-Worker והסיסמה |
+| `shim.js` | מחבר את האפליקציה ל-Worker במקום ל-Claude. לא לגעת |
+| `sw.js` | Service Worker — מאפשר עבודה בלי אינטרנט |
+| `manifest.webmanifest` + `icons/` | שם, אייקון ותצוגת מסך מלא |
+| `worker/` | השרת המתווך ל-Anthropic API (עולה ל-Cloudflare, לא ל-GitHub) |
+
+## מה צריך לפני שמתחילים (5 דקות)
+
+1. חשבון GitHub (יש לך).
+2. חשבון חינמי ב-[Cloudflare](https://dash.cloudflare.com/sign-up).
+3. **מפתח API** של OpenAI מ-[platform.openai.com/api-keys](https://platform.openai.com/api-keys) (או של Anthropic — שניהם נתמכים).
+   שים לב: מנוי ChatGPT לא כולל API — צריך יתרה/אמצעי תשלום ב-platform.openai.com → Billing.
+4. **מומלץ מאוד:** ב-Billing → Limits להגדיר **תקציב חודשי נמוך** (למשל 5$). זו רשת הביטחון האמיתית.
+
+## שלב 1 — העלאת האפליקציה ל-GitHub Pages
+
+1. ריפו חדש, למשל `calories` (Public).
+2. להעלות את כל הקבצים **חוץ מתיקיית `worker/`**.
+3. Settings → Pages → Source: `Deploy from a branch` → `main` / `root` → Save.
+4. אחרי דקה-שתיים: `https://<username>.github.io/calories/` — האפליקציה כבר עובדת (הזנה ידנית, בלי הערכה חכמה).
+
+## שלב 2 — ה-Worker ב-Cloudflare
+
+**דרך הדשבורד (בלי להתקין כלום):**
+1. Workers & Pages → Create → Create Worker → שם: `calorie-ai` → Deploy.
+2. Edit code → למחוק הכול → להדביק את `worker/worker.js` → Deploy.
+3. Settings → Variables and Secrets:
+   - `OPENAI_API_KEY` — **Secret** — המפתח מ-OpenAI (או `ANTHROPIC_API_KEY` אם בוחרים ב-Anthropic)
+   - `APP_TOKEN` — **Secret** — מחרוזת אקראית ארוכה (נייצר ביחד)
+   - `ALLOWED_ORIGIN` — **Text** — `https://<username>.github.io` (בלי `/calories` ובלי `/` בסוף)
+4. להעתיק את כתובת ה-Worker (`https://calorie-ai.<something>.workers.dev`).
+
+## שלב 3 — חיבור
+
+לערוך את `config.js` ב-GitHub:
+```js
+AI_ENDPOINT: "https://calorie-ai.<something>.workers.dev",
+APP_TOKEN: "<אותה מחרוזת כמו ב-Cloudflare>"
+```
+Commit → לחכות דקה → לרענן.
+
+## שלב 4 — העברת הנתונים מגרסת Claude
+
+1. בגרסה הנוכחית (הקישור של Claude): הגדרות → **ייצוא כל הנתונים ל-CSV**.
+2. באפליקציה החדשה: הגדרות → **ייבוא נתונים מ-CSV**.
+   ייבוא חוזר לא יוצר כפילויות. מועדפים, עיצוב וארוחות מותאמות לא עוברים ב-CSV — מגדירים מחדש (דקה).
+   בכל משתמש מייבאים בנפרד (עוברים למשתמש ואז מייבאים את הקובץ שלו).
+
+## שלב 5 — התקנה בטלפון
+
+- **iPhone:** Safari → הכתובת → שיתוף → "הוסף למסך הבית".
+- **Android:** Chrome → הכתובת → ⋮ → "התקן אפליקציה".
+
+## עדכונים בעתיד
+
+אחרי שינוי ב-`index.html` — להעלות את `VERSION` ב-`sw.js` (`v1` → `v2`), אחרת הטלפון עלול להציג גרסה ישנה מהקאש.
+
+## חשוב לדעת
+
+- **הנתונים נשמרים בטלפון בלבד.** אין סנכרון בין מכשירים. מחיקת נתוני Safari/האתר מוחקת גם אותם → לייצא CSV מדי פעם. סנכרון בענן (Supabase) אפשר להוסיף בהמשך.
+- **אבטחה:** הסיסמה ב-`config.js` גלויה למי שפותח את קוד האתר. מה שבאמת מגן: בדיקת הכתובת (`ALLOWED_ORIGIN`) ב-Worker + ה-Spend limit ב-Anthropic. לשימוש אישי זה מספיק.
+- **מודלים:** עם OpenAI — `gpt-4o-mini` לטקסט ולתמונה (אפשר להחליף דרך `OPENAI_MODEL`). עם Anthropic — Haiku לטקסט, Sonnet לתמונה. ה-Worker בוחר ספק לפי המפתח שהוגדר, או לפי `PROVIDER`.
